@@ -1,0 +1,35 @@
+{
+	"FileVersion": 3,
+	"Version": 0,
+	"VersionName": "1.0",
+	"FriendlyName": "SDFutureExtentions",
+	"Description": "Extensions to Async Futures",
+	"Category": "Other",
+	"CreatedBy": "Splash Damage",
+	"CreatedByURL": "https://www.splashdamage.com/",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": false,
+	"IsBetaVersion": true,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "SDFutureExtensions",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "SDFutureExtensionsTest",
+			"Type": "DeveloperTool",
+			"LoadingPhase": "Default"
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "SDTestHarness",
+			"Enabled": true
+		}
+	]
+}

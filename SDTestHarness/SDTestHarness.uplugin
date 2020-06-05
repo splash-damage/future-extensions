@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"Version": 0,
+	"VersionName": "1.0",
+	"FriendlyName": "SDTestHarness",
+	"Description": "Test support infrastructure",
+	"Category": "Other",
+	"CreatedBy": "Splash Damage",
+	"CreatedByURL": "https://www.splashdamage.com/",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": false,
+	"IsBetaVersion": true,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "SDTestHarness",
+			"Type": "DeveloperTool",
+			"LoadingPhase": "Default"
+		}
+	]
+}
