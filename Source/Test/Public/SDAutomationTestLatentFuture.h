@@ -1,7 +1,8 @@
 #pragma once
 
-#include "SDAutomationTestMacros.h"
 #include "FutureExtensions.h"
+
+#ifdef DEPRECATED_TESTS
 
 // FExpectedFutureLatentTestBase provides an implementation of a latent command that
 // monitors an underlying future computation.
@@ -101,3 +102,5 @@ bool FExpectedFutureLatentTestBase<T>::Update()
 		Param CaptureParam;														\
 	};																			\
 	IMPLEMENT_EXPECTED_FUTURE_LATENT_TEST(TestName)
+
+#endif

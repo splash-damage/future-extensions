@@ -28,7 +28,7 @@
 	],
 	"Plugins": [
 		{
-			"Name": "SDTestHarness",
+			"Name": "Automatron",
 			"Enabled": true
 		}
 	]

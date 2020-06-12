@@ -7,22 +7,13 @@ public class SDFutureExtensions : ModuleRules
 	public SDFutureExtensions(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-		PublicIncludePathModuleNames.AddRange(
-			new string[] {
-				"Core"
-			}
-		);
 
-		PublicDependencyModuleNames.AddRange(
-			new string[] {
-				"Core",
-				}
-		);
+		PublicIncludePathModuleNames.AddRange(new string[] {
+			"Core"
+		});
 
-		PrivateDependencyModuleNames.AddRange(
-			new string[] {
-
-				}
-		);
+		PublicDependencyModuleNames.AddRange(new string[] {
+			"Core",
+		});
 	}
 }
