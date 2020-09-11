@@ -204,7 +204,6 @@ namespace SD
 			, ExecutionDetails(InExecutionDetails)
 		{}
 
-		TExpectedFuture() = default;
 		TExpectedFuture(TExpectedFuture<ResultType>&&) = default;
 
 		TExpectedFuture<ResultType>& operator=(TExpectedFuture<ResultType>&& Other)
@@ -351,7 +350,6 @@ namespace SD
 			, ExecutionDetails(InExecutionDetails)
 		{}
 
-		TExpectedFuture() = default;
 		TExpectedFuture(TExpectedFuture<void>&&) = default;
 
 		TExpectedFuture<void>& operator=(TExpectedFuture<void>&& Other)
