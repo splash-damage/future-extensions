@@ -37,7 +37,6 @@ namespace SD
 		class TExpectedFutureContinuationQueuedWork;
 	}
 	//
-
 	namespace FutureExecutionDetails
 	{
 		struct FExecutionDetails
@@ -66,7 +65,7 @@ namespace SD
 				case EExpectedFutureExecutionPolicy::NamedThread:
 					return FExecutionDetails(EExpectedFutureExecutionPolicy::NamedThread,
 						FutureOptions.GetDesiredExecutionThread());
-				//There is no antecedent future so inline is equivalent to current
+					//There is no antecedent future so inline is equivalent to current
 				case EExpectedFutureExecutionPolicy::Inline:
 				case EExpectedFutureExecutionPolicy::Current:
 				default:
@@ -78,7 +77,7 @@ namespace SD
 
 		template<typename P>
 		FExecutionDetails GetExecutionDetails(const FExpectedFutureOptions& FutureOptions,
-												const TExpectedFuture<P>& AntecedentFuture)
+			const TExpectedFuture<P>& AntecedentFuture)
 		{
 			if (FutureOptions.GetExecutionPolicy() == EExpectedFutureExecutionPolicy::Inline)
 			{
@@ -90,6 +89,29 @@ namespace SD
 			}
 		}
 	}
+
+	namespace FutureState
+	{
+		template< typename R>
+		class FExpectedFutureState
+		{
+		public:
+			FExpectedFutureState(TFuture<TExpected<R>>&& Future, const FutureExecutionDetails::FExecutionDetails& Execution)
+				: InternalFuture(MoveTemp(Future))
+				, ExecutionDetails(Execution)
+			{}
+
+			TFuture<TExpected<R>> InternalFuture;
+			FutureExecutionDetails::FExecutionDetails ExecutionDetails;
+		};
+
+		template< typename R>
+		TSharedRef<FExpectedFutureState<R>, ESPMode::ThreadSafe> Allocate(TFuture<TExpected<R>> Future, const FutureExecutionDetails::FExecutionDetails& Execution)
+		{
+			return MakeShared<FExpectedFutureState<R>, ESPMode::ThreadSafe>(MoveTemp(Future), Execution);
+		}
+	}
+
 
 	namespace FutureInitialisationDetails
 	{
@@ -104,7 +126,7 @@ namespace SD
 			using SharedPromiseRef = TSharedRef<TExpectedPromise<UnwrappedReturnType>, ESPMode::ThreadSafe>;
 
 			const FutureExecutionDetails::FExecutionDetails ExecutionDetails =
-					FutureExecutionDetails::GetExecutionDetails(FutureOptions);
+				FutureExecutionDetails::GetExecutionDetails(FutureOptions);
 
 			SharedPromiseRef Promise =
 				MakeShared<TExpectedPromise<UnwrappedReturnType>, ESPMode::ThreadSafe>(ExecutionDetails);
@@ -131,8 +153,8 @@ namespace SD
 		using namespace FutureExtensionTypeTraits;
 
 		template<class F, class P>
-		auto ThenImpl(F&& Func, TExpectedFuture<P>&& PrevFuture, FGraphEventRef ContinuationTrigger,
-						const SD::FExpectedFutureOptions& FutureOptions)
+		auto ThenImpl(F&& Func, const TExpectedFuture<P>& PrevFuture, FGraphEventRef ContinuationTrigger,
+			const SD::FExpectedFutureOptions& FutureOptions)
 		{
 			check(PrevFuture.IsValid());
 
@@ -142,7 +164,7 @@ namespace SD
 			using SharedPromiseRef = TSharedRef<TExpectedPromise<UnwrappedReturnType>, ESPMode::ThreadSafe>;
 
 			const FutureExecutionDetails::FExecutionDetails ExecutionDetails =
-					FutureExecutionDetails::GetExecutionDetails(FutureOptions, PrevFuture);
+				FutureExecutionDetails::GetExecutionDetails(FutureOptions, PrevFuture);
 
 			SharedPromiseRef Promise = MakeShared<TExpectedPromise<UnwrappedReturnType>, ESPMode::ThreadSafe>(ExecutionDetails);
 			TExpectedFuture<UnwrappedReturnType> Future = Promise->GetFuture();
@@ -151,9 +173,9 @@ namespace SD
 			{
 				using ContinuationWorkType = FutureExtensionTaskGraph::TExpectedFutureContinuationQueuedWork<F, P, UnwrappedReturnType>;
 				GThreadPool->AddQueuedWork(new ContinuationWorkType(Forward<F>(Func),
-																	MoveTemp(Promise),
-																	MoveTemp(PrevFuture),
-																	FutureOptions.GetCancellationTokenHandle()));
+					MoveTemp(Promise),
+					PrevFuture,
+					FutureOptions.GetCancellationTokenHandle()));
 			}
 			else
 			{
@@ -161,9 +183,9 @@ namespace SD
 				FGraphEventArray TriggerArray{ ContinuationTrigger };
 				TGraphTask<ContinuationTaskType>::CreateTask(&TriggerArray)
 					.ConstructAndDispatchWhenReady(Forward<F>(Func),
-													MoveTemp(Promise),
-													MoveTemp(PrevFuture),
-													FutureOptions.GetCancellationTokenHandle());
+						MoveTemp(Promise),
+						PrevFuture,
+						FutureOptions.GetCancellationTokenHandle());
 			}
 
 			return Future;
@@ -198,36 +220,47 @@ namespace SD
 		using ExpectedResultType = TExpected<UnwrappedResultType>;
 
 		TExpectedFuture(TFuture<ExpectedResultType>&& Future, FGraphEventRef InPromiseCompletionEventRef,
-						const FutureExecutionDetails::FExecutionDetails& InExecutionDetails)
+			const FutureExecutionDetails::FExecutionDetails& InExecutionDetails)
 			: TExpectedFutureBase(InPromiseCompletionEventRef)
-			, InternalFuture(MoveTemp(Future))
-			, ExecutionDetails(InExecutionDetails)
+			, SharedState(FutureState::Allocate<ResultType>(MoveTemp(Future), InExecutionDetails))
 		{}
 
+		TExpectedFuture(const TExpectedFuture<ResultType>& Other)
+			: TExpectedFutureBase(Other.PromiseCompletionEventRef)
+			, SharedState(Other.SharedState)
+		{}
+
+		TExpectedFuture<ResultType>& operator=(const TExpectedFuture<ResultType>& Other)
+		{
+			PromiseCompletionEventRef = Other.PromiseCompletionEventRef;
+			SharedState = Other.SharedState;
+		}
+
+		TExpectedFuture() = default;
 		TExpectedFuture(TExpectedFuture<ResultType>&&) = default;
 
 		TExpectedFuture<ResultType>& operator=(TExpectedFuture<ResultType>&& Other)
 		{
-			InternalFuture = MoveTemp(Other.InternalFuture);
+			SharedState = Other.SharedState;
 			return *this;
 		}
 
 		template<class F>
-		auto Then(F&& Func, const SD::FExpectedFutureOptions& FutureOptions = SD::FExpectedFutureOptions())
+		auto Then(F&& Func, const SD::FExpectedFutureOptions& FutureOptions = SD::FExpectedFutureOptions()) const
 		{
 			check(IsValid());
-			return FutureContinuationDetails::ThenImpl(Forward<F>(Func), MoveTemp(*this),
-														PromiseCompletionEventRef, FutureOptions);
+			return FutureContinuationDetails::ThenImpl(Forward<F>(Func), *this,
+				PromiseCompletionEventRef, FutureOptions);
 		}
 
 		bool IsReady() const
 		{
-			return InternalFuture.IsReady();
+			return SharedState->InternalFuture.IsReady();
 		}
 
 		ExpectedResultType Get() const
 		{
-			return InternalFuture.Get();
+			return SharedState->InternalFuture.Get();
 		}
 
 		//@TODO
@@ -238,35 +271,31 @@ namespace SD
 
 		bool IsValid() const
 		{
-			return InternalFuture.IsValid();
+			return SharedState->InternalFuture.IsValid();
 		}
 
 		const FutureExecutionDetails::FExecutionDetails GetExecutionDetails() const
 		{
-			return ExecutionDetails;
+			return SharedState->ExecutionDetails;
 		}
 
 	private:
 
 		//Copy construction is not allowed for futures
-		TExpectedFuture(const TExpectedFuture<ResultType>&) = delete;
-		TExpectedFuture<ResultType>& operator=(const TExpectedFuture<ResultType>& Other) = delete;
 		TExpectedFuture(const TFuture<ResultType>&) = delete;
 
-		TFuture<ExpectedResultType> InternalFuture;
-
-		FutureExecutionDetails::FExecutionDetails ExecutionDetails;
+		TSharedRef<FutureState::FExpectedFutureState<ResultType>, ESPMode::ThreadSafe> SharedState;
 	};
-	
+
 	template <class R>
-	class TExpectedPromise : public TSharedFromThis<TExpectedPromise<R>, ESPMode::ThreadSafe>, public FCancellablePromise
+	class TExpectedPromise : public TSharedFromThis<TExpectedPromise<R>>, public FCancellablePromise
 	{
 		using ExpectedResultType = TExpected<R>;
 
 	public:
 
 		TExpectedPromise(const FutureExecutionDetails::FExecutionDetails& InExecutionDetails =
-							FutureExecutionDetails::FExecutionDetails())
+			FutureExecutionDetails::FExecutionDetails())
 			: CompletionTask(TGraphTask<FNullGraphTask>::CreateTask().ConstructAndHold(TStatId(), ENamedThreads::AnyThread))
 			, InternalPromise(FutureContinuationDetails::GetTriggerFunc(CompletionTask))
 			, ValueSetSync(0)
@@ -284,15 +313,15 @@ namespace SD
 		TExpectedFuture<R> GetFuture()
 		{
 			return TExpectedFuture<R>(InternalPromise.GetFuture(),
-										CompletionTask->GetCompletionEvent(),
-										ExecutionDetails);
+				CompletionTask->GetCompletionEvent(),
+				ExecutionDetails);
 		}
 
 		bool IsSet() const
 		{
 			return FPlatformAtomics::AtomicRead(&ValueSetSync) == 1;
 		}
-		
+
 		void SetValue(ExpectedResultType&& Result)
 		{
 			if (FPlatformAtomics::InterlockedExchange(&ValueSetSync, 1) == 0)
@@ -344,36 +373,53 @@ namespace SD
 		using ExpectedResultType = TExpected<void>;
 
 		TExpectedFuture(TFuture<ExpectedResultType>&& Future, FGraphEventRef InPromiseCompletionEventRef,
-						const FutureExecutionDetails::FExecutionDetails& InExecutionDetails)
+			const FutureExecutionDetails::FExecutionDetails& InExecutionDetails)
 			: TExpectedFutureBase(InPromiseCompletionEventRef)
-			, InternalFuture(MoveTemp(Future))
-			, ExecutionDetails(InExecutionDetails)
+			, SharedState(FutureState::Allocate<void>(MoveTemp(Future), InExecutionDetails))
 		{}
 
+		TExpectedFuture(const TExpectedFuture<void>& Other)
+			: TExpectedFutureBase(Other.PromiseCompletionEventRef)
+			, SharedState(Other.SharedState)
+		{}
+
+		TExpectedFuture<void>& operator=(const TExpectedFuture<void>& Other)
+		{
+			PromiseCompletionEventRef = Other.PromiseCompletionEventRef;
+			SharedState = Other.SharedState;
+		}
+
+		//Do I need this one? 
+		/*TExpectedFuture(const TFuture<TExpected<void>>& Future)
+			: TExpectedFutureBase(TGraphTask<FNullGraphTask>::CreateTask().ConstructAndHold(TStatId(), ENamedThreads::AnyThread)->GetCompletionEvent()) //Is this right, got this from the promise?
+			, SharedState(FutureState::Allocate<void>(Future, FutureExecutionDetails::FExecutionDetails()))
+		{}*/
+
+		TExpectedFuture() = default;
 		TExpectedFuture(TExpectedFuture<void>&&) = default;
 
 		TExpectedFuture<void>& operator=(TExpectedFuture<void>&& Other)
 		{
-			InternalFuture = MoveTemp(Other.InternalFuture);
+			SharedState = Other.SharedState;
 			return *this;
 		}
 
 		bool IsReady() const
 		{
-			return InternalFuture.IsReady();
+			return SharedState->InternalFuture.IsReady();
 		}
 
 		template<class F>
-		auto Then(F&& Func, const SD::FExpectedFutureOptions& FutureOptions = SD::FExpectedFutureOptions())
+		auto Then(F&& Func, const SD::FExpectedFutureOptions& FutureOptions = SD::FExpectedFutureOptions()) const
 		{
 			check(IsValid());
-			return FutureContinuationDetails::ThenImpl(Forward<F>(Func), MoveTemp(*this),
-														PromiseCompletionEventRef, FutureOptions);
+			return FutureContinuationDetails::ThenImpl(Forward<F>(Func), *this,
+				PromiseCompletionEventRef, FutureOptions);
 		}
 
 		ExpectedResultType Get() const
 		{
-			return InternalFuture.Get();
+			return SharedState->InternalFuture.Get();
 		}
 
 		//@TODO
@@ -384,35 +430,29 @@ namespace SD
 
 		bool IsValid() const
 		{
-			return InternalFuture.IsValid();
+			return SharedState->InternalFuture.IsValid();
 		}
 
 		const FutureExecutionDetails::FExecutionDetails GetExecutionDetails() const
 		{
-			return ExecutionDetails;
+			return SharedState->ExecutionDetails;
 		}
 
 	private:
+		TExpectedFuture(const TFuture<void>& Future) = delete;
 
-		//Copy construction is not allowed for futures
-		TExpectedFuture(const TExpectedFuture<void>&) = delete;
-		TExpectedFuture<void>& operator=(const TExpectedFuture<void>& Other) = delete;
-		TExpectedFuture(const TFuture<void>&) = delete;
-
-		TFuture<ExpectedResultType> InternalFuture;
-
-		FutureExecutionDetails::FExecutionDetails ExecutionDetails;
+		TSharedRef<FutureState::FExpectedFutureState<void>, ESPMode::ThreadSafe> SharedState;
 	};
 
 	template <>
-	class TExpectedPromise<void> : public TSharedFromThis<TExpectedPromise<void>, ESPMode::ThreadSafe>, public FCancellablePromise
+	class TExpectedPromise<void> : public TSharedFromThis<TExpectedPromise<void>>, public FCancellablePromise
 	{
 	public:
 
 		using ExpectedResultType = TExpected<void>;
 
 		TExpectedPromise(const FutureExecutionDetails::FExecutionDetails& InExecutionDetails =
-							FutureExecutionDetails::FExecutionDetails())
+			FutureExecutionDetails::FExecutionDetails())
 			: CompletionTask(TGraphTask<FNullGraphTask>::CreateTask().ConstructAndHold(TStatId(), ENamedThreads::AnyThread))
 			, InternalPromise(FutureContinuationDetails::GetTriggerFunc(CompletionTask))
 			, ValueSetSync(0)
@@ -430,8 +470,8 @@ namespace SD
 		TExpectedFuture<void> GetFuture()
 		{
 			return TExpectedFuture<void>(InternalPromise.GetFuture(),
-											CompletionTask->GetCompletionEvent(),
-											ExecutionDetails);
+				CompletionTask->GetCompletionEvent(),
+				ExecutionDetails);
 		}
 
 		bool IsSet() const
