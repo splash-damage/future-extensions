@@ -35,7 +35,7 @@ In addition to aiding readability, this plugin also seeks to provide an addition
 - [x] Continuations
 - [x] Cancellation
 - [x] Execution Policies
-- [ ] `When_All()`/`When_Any()` API
+- [x] `When_All()`/`When_Any()` API
   * See [N3721 proposal](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3721.pdf)
 
 ## Key classes
