@@ -1,5 +1,6 @@
 // Copyright(c) Splash Damage. All rights reserved.
 #pragma once
+#include <atomic>
 
 namespace SD
 {
@@ -8,49 +9,83 @@ namespace SD
 		constexpr int32 ERROR_INVALID_ARGUMENT = 1;
 	}
 
+	enum class EFailMode
+	{
+		Full,
+		Fast
+	};
+
 	template<typename F>
-	auto Async(F&& Function, const FExpectedFutureOptions& FutureOptions = FExpectedFutureOptions())
+	auto Async(F&& Function, const SD::FExpectedFutureOptions& FutureOptions = SD::FExpectedFutureOptions())
 	{
 		return FutureInitialisationDetails::CreateExpectedFuture(Forward<F>(Function), FutureOptions);
 	}
 
 	template<typename T>
-	SD::TExpectedFuture<TArray<T>> WhenAll(const TArray<SD::TExpectedFuture<T>>& Futures)
+	SD::TExpectedFuture<TArray<T>> WhenAll(const TArray<SD::TExpectedFuture<T>>& Futures, const EFailMode FailMode = EFailMode::Fast)
 	{
 		if (Futures.Num() == 0)
 		{
 			return MakeReadyFuture<TArray<T>>(TArray<T>());
 		}
 
-		auto PromiseRef = MakeShared<SD::TExpectedPromise<TArray<T>>, ESPMode::ThreadSafe>();
-		auto ValueRef = MakeShared<TArray<T>, ESPMode::ThreadSafe>();
-		auto CounterRef = MakeShared<int32, ESPMode::ThreadSafe>(Futures.Num());
-		for (auto& Future : Futures)
+		struct FSharedExpected
 		{
-			Future.Then([CounterRef, PromiseRef, ValueRef](const SD::TExpected<T>& Result)
+			void Set(const TExpected<TArray<T>>& Other) { Expected = Other; }
+			TExpected<TArray<T>> Expected;
+		};
+
+		const auto CounterRef = MakeShared<std::atomic<int32>, ESPMode::ThreadSafe>(Futures.Num());
+		const auto PromiseRef = MakeShared<SD::TExpectedPromise<TArray<T>>, ESPMode::ThreadSafe>();
+		const auto ValueRef = MakeShared<TArray<T>, ESPMode::ThreadSafe>();
+		const auto FirstErrorRef = MakeShared<FSharedExpected, ESPMode::ThreadSafe>();
+		for (const auto& Future : Futures)
+		{
+			Future.Then([CounterRef, PromiseRef, ValueRef, FirstErrorRef, FailMode] (const SD::TExpected<T>& Result)
 				{
+					--(CounterRef.Get());
 					if (Result.IsCompleted())
 					{
-						ValueRef->Emplace(Result.GetValue().GetValue());
-						if (--(CounterRef.Get()) == 0)
+						ValueRef->Emplace(*Result);
+					}
+					else
+					{
+						if (FirstErrorRef->Expected.GetState() == EExpectedResultState::Incomplete)
+						{
+							if (Result.IsError())
+							{
+								FirstErrorRef->Set(MakeErrorExpected<TArray<T>>(Result.GetError().Get()));
+							}
+							else if (Result.IsCancelled())
+							{
+								FirstErrorRef->Set(MakeCancelledExpected<TArray<T>>());
+							}
+						}
+					
+						if (FailMode == EFailMode::Fast)
+						{
+							//Copy the expected value here as other continuations may still use it.
+							PromiseRef->SetValue(TExpected<TArray<T>>(FirstErrorRef->Expected));
+						}
+					}
+			
+					if (CounterRef.Get() == 0)
+					{
+						if (FirstErrorRef->Expected.GetState() == EExpectedResultState::Incomplete)
 						{
 							PromiseRef->SetValue(ValueRef.Get());
 						}
-					}
-					else if(Result.IsError())
-					{
-						PromiseRef->SetValue(Result.GetError().Get());
-					}
-					else if (Result.IsCancelled())
-					{
-						PromiseRef->SetValue(MakeCancelledExpected<TArray<T>>());
+						else
+						{
+							PromiseRef->SetValue(MoveTemp(FirstErrorRef->Expected));
+						}
 					}
 				});
 		}
 		return PromiseRef->GetFuture();
 	}
 
-	SDFUTUREEXTENSIONS_API SD::TExpectedFuture<void> WhenAll(const TArray<SD::TExpectedFuture<void>>& Futures);
+	SDFUTUREEXTENSIONS_API SD::TExpectedFuture<void> WhenAll(const TArray<SD::TExpectedFuture<void>>& Futures, const EFailMode FailMode = EFailMode::Fast);
 
 	template<typename T>
 	SD::TExpectedFuture<T> WhenAny(const TArray<SD::TExpectedFuture<T>>& Futures)
