@@ -457,7 +457,7 @@ namespace SD
 	};
 
 	template <>
-	class TExpectedPromise<void> : public TSharedFromThis<TExpectedPromise<void>>, public FCancellablePromise
+	class TExpectedPromise<void> : public TSharedFromThis<TExpectedPromise<void>, ESPMode::ThreadSafe>, public FCancellablePromise
 	{
 	public:
 
