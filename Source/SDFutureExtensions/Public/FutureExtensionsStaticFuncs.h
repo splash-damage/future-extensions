@@ -57,14 +57,12 @@ namespace SD
 						if (FirstErrorRef->IsSet() == false)
 						{
 							PromiseRef->SetValue(ValueRef.Get());
+							FirstErrorRef->SetValue(ValueRef.Get()); //Avoid broken promises
 						}
 						else
 						{
 							PromiseRef->SetValue(FirstErrorRef->GetFuture().Get());
 						}
-
-						//avoid broken promises
-						PromiseRef->SetValue(TArray<>());
 					}
 				});
 		}
