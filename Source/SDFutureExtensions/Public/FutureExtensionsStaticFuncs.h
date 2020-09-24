@@ -22,23 +22,17 @@ namespace SD
 	}
 
 	template<typename T>
-	SD::TExpectedFuture<TArray<T>> WhenAll(const TArray<SD::TExpectedFuture<T>>& Futures, const EFailMode FailMode = EFailMode::Fast)
+	SD::TExpectedFuture<TArray<T>> WhenAll(const TArray<SD::TExpectedFuture<T>>& Futures, const EFailMode FailMode)
 	{
 		if (Futures.Num() == 0)
 		{
 			return MakeReadyFuture<TArray<T>>(TArray<T>());
 		}
 
-		struct FSharedExpected
-		{
-			void Set(const TExpected<TArray<T>>& Other) { Expected = Other; }
-			TExpected<TArray<T>> Expected;
-		};
-
 		const auto CounterRef = MakeShared<std::atomic<int32>, ESPMode::ThreadSafe>(Futures.Num());
 		const auto PromiseRef = MakeShared<SD::TExpectedPromise<TArray<T>>, ESPMode::ThreadSafe>();
 		const auto ValueRef = MakeShared<TArray<T>, ESPMode::ThreadSafe>();
-		const auto FirstErrorRef = MakeShared<FSharedExpected, ESPMode::ThreadSafe>();
+		const auto FirstErrorRef = MakeShared<SD::TExpectedPromise<TArray<T>>, ESPMode::ThreadSafe>();
 		for (const auto& Future : Futures)
 		{
 			Future.Then([CounterRef, PromiseRef, ValueRef, FirstErrorRef, FailMode] (const SD::TExpected<T>& Result)
@@ -50,42 +44,38 @@ namespace SD
 					}
 					else
 					{
-						if (FirstErrorRef->Expected.GetState() == EExpectedResultState::Incomplete)
-						{
-							if (Result.IsError())
-							{
-								FirstErrorRef->Set(MakeErrorExpected<TArray<T>>(Result.GetError().Get()));
-							}
-							else if (Result.IsCancelled())
-							{
-								FirstErrorRef->Set(MakeCancelledExpected<TArray<T>>());
-							}
-						}
+						FirstErrorRef->SetValue(Convert<TArray<T>, T>(Result, TArray<T>()));
 					
 						if (FailMode == EFailMode::Fast)
 						{
-							//Copy the expected value here as other continuations may still use it.
-							PromiseRef->SetValue(TExpected<TArray<T>>(FirstErrorRef->Expected));
+							PromiseRef->SetValue(FirstErrorRef->GetFuture().Get());
 						}
 					}
 			
 					if (CounterRef.Get() == 0)
 					{
-						if (FirstErrorRef->Expected.GetState() == EExpectedResultState::Incomplete)
+						if (FirstErrorRef->IsSet() == false)
 						{
 							PromiseRef->SetValue(ValueRef.Get());
 						}
 						else
 						{
-							PromiseRef->SetValue(MoveTemp(FirstErrorRef->Expected));
+							PromiseRef->SetValue(FirstErrorRef->GetFuture().Get());
 						}
+
+						//avoid broken promises
+						PromiseRef->SetValue(TArray<>());
 					}
 				});
 		}
 		return PromiseRef->GetFuture();
 	}
 
-	SDFUTUREEXTENSIONS_API SD::TExpectedFuture<void> WhenAll(const TArray<SD::TExpectedFuture<void>>& Futures, const EFailMode FailMode = EFailMode::Fast);
+	template<typename T>
+	SD::TExpectedFuture<TArray<T>> WhenAll(const TArray<SD::TExpectedFuture<T>>& Futures) { return WhenAll<T>(Futures, EFailMode::Full); }
+
+	SDFUTUREEXTENSIONS_API SD::TExpectedFuture<void> WhenAll(const TArray<SD::TExpectedFuture<void>>& Futures, const EFailMode FailMode);
+	SDFUTUREEXTENSIONS_API SD::TExpectedFuture<void> WhenAll(const TArray<SD::TExpectedFuture<void>>& Futures);
 
 	template<typename T>
 	SD::TExpectedFuture<T> WhenAny(const TArray<SD::TExpectedFuture<T>>& Futures)
