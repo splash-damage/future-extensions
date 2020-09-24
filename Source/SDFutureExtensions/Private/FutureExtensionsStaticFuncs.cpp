@@ -10,15 +10,9 @@ SD::TExpectedFuture<void> SD::WhenAll(const TArray<SD::TExpectedFuture<void>>& F
 		return SD::MakeReadyFuture();
 	}
 
-	struct FSharedExpected
-	{
-		void Set(const TExpected<void>& Other) { Expected = Other; }
-		TExpected<void> Expected;
-	};
-
 	const auto CounterRef = MakeShared<std::atomic<int32>, ESPMode::ThreadSafe>(Futures.Num());
 	const auto PromiseRef = MakeShared<SD::TExpectedPromise<void>, ESPMode::ThreadSafe>();
-	const auto FirstErrorRef = MakeShared<FSharedExpected, ESPMode::ThreadSafe>();
+	const auto FirstErrorRef = MakeShared<SD::TExpectedPromise<void>, ESPMode::ThreadSafe>();
 	for (auto& Future : Futures)
 	{
 		Future.Then([CounterRef, PromiseRef, FirstErrorRef, FailMode](const SD::TExpected<void>& Result)
@@ -26,38 +20,34 @@ SD::TExpectedFuture<void> SD::WhenAll(const TArray<SD::TExpectedFuture<void>>& F
 				--(CounterRef.Get());
 				if (Result.IsCompleted() == false)
 				{
-					if (FirstErrorRef->Expected.GetState() == EExpectedResultState::Incomplete)
-					{
-						if (Result.IsError())
-						{
-							FirstErrorRef->Set(MakeErrorExpected<void>(Result.GetError().Get()));
-						}
-						else if (Result.IsCancelled())
-						{
-							FirstErrorRef->Set(MakeCancelledExpected<void>());
-						}
-					}
+					FirstErrorRef->SetValue(Convert<void>(Result));
 
 					if (FailMode == EFailMode::Fast)
 					{
-						//Copy the expected value here as other continuations may still use it.
-						PromiseRef->SetValue(TExpected<void>(FirstErrorRef->Expected));
+						PromiseRef->SetValue(FirstErrorRef->GetFuture().Get());
 					}
 				}
 
 				if (CounterRef.Get() == 0)
 				{
-					if (FirstErrorRef->Expected.GetState() == EExpectedResultState::Incomplete)
+					if (FirstErrorRef->IsSet() == false)
 					{
 						PromiseRef->SetValue();
 					}
 					else
 					{
-						PromiseRef->SetValue(MoveTemp(FirstErrorRef->Expected));
+						PromiseRef->SetValue(FirstErrorRef->GetFuture().Get());
 					}
+					//avoid broken promises
+					PromiseRef->SetValue();
 				}
 			});
 	}
 
 	return PromiseRef->GetFuture();
+}
+
+SD::TExpectedFuture<void> SD::WhenAll(const TArray<TExpectedFuture<void>>& Futures)
+{
+	return WhenAll(Futures, EFailMode::Full); 
 }
