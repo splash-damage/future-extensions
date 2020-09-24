@@ -33,13 +33,12 @@ SD::TExpectedFuture<void> SD::WhenAll(const TArray<SD::TExpectedFuture<void>>& F
 					if (FirstErrorRef->IsSet() == false)
 					{
 						PromiseRef->SetValue();
+						FirstErrorRef->SetValue(); //Avoid broken promises
 					}
 					else
 					{
 						PromiseRef->SetValue(FirstErrorRef->GetFuture().Get());
 					}
-					//avoid broken promises
-					PromiseRef->SetValue();
 				}
 			});
 	}
