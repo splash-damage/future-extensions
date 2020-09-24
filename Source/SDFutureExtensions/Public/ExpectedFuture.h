@@ -237,8 +237,8 @@ namespace SD
 			return *this;
 		}
 
-		TExpectedFuture()
-			: TExpectedFutureBase(TGraphTask<FNullGraphTask>::CreateTask().ConstructAndHold(TStatId(), ENamedThreads::AnyThread)->GetCompletionEvent())
+		TExpectedFuture(FGraphEventRef())
+			: TExpectedFutureBase()
 			, SharedState(FutureState::Allocate<ResultType>(TFuture<ExpectedResultType>(), FutureExecutionDetails::FExecutionDetails()))
 		{}
 
@@ -280,7 +280,7 @@ namespace SD
 
 		bool IsValid() const
 		{
-			return SharedState->InternalFuture.IsValid();
+			return PromiseCompletionEventRef.IsValid() && SharedState->InternalFuture.IsValid();
 		}
 
 		const FutureExecutionDetails::FExecutionDetails GetExecutionDetails() const
@@ -400,7 +400,7 @@ namespace SD
 		}
 
 		TExpectedFuture()
-			: TExpectedFutureBase(TGraphTask<FNullGraphTask>::CreateTask().ConstructAndHold(TStatId(), ENamedThreads::AnyThread)->GetCompletionEvent())
+			: TExpectedFutureBase(FGraphEventRef())
 			, SharedState(FutureState::Allocate<ResultType>(TFuture<ExpectedResultType>(), FutureExecutionDetails::FExecutionDetails()))
 		{}
 
@@ -442,7 +442,7 @@ namespace SD
 
 		bool IsValid() const
 		{
-			return SharedState->InternalFuture.IsValid();
+			return PromiseCompletionEventRef.IsValid() && SharedState->InternalFuture.IsValid();
 		}
 
 		const FutureExecutionDetails::FExecutionDetails GetExecutionDetails() const
