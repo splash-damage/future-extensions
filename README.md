@@ -147,6 +147,26 @@ It is important to know that cancellation is an accepted race condition. If the 
 
 This means that cancellation is best-effort cancellation and *not guaranteed*.
 
+### Combining Futures
+
+There are two ways to combine multiple futures into one futures. The concepts use `AND` and `OR` and are implemented as `WhenAll` and `WhenAny` respectively. 
+
+#### When All
+
+The `TExpectedFuture` created by this call will be considered to have successfully completed when each of the individual `TExpectedFuture`s has completed successfully. The resulting `TExpected` will be templated by a `TArray<T>` where `T` is the original type of all of the tasks. Should the `WhenAll` fail it will hold the error of the first `TExpectedFuture` to fail. 
+
+##### Implementation details
+
+It is important to remember that the order of the results in a successful `WhenAll` are not preserved. In the case of an failed `WhenAll` the client code can specify the failure mode `Full` or `Fast` where `Full` will wait for all `TExpectedFuture`s to complete before completing where as `Fast` will immediately complete after the first `TExpectedFuture` failed. Should there be multiple errors the client code is not notified, it is recommended that each of the `TExpectedFuture`s are captured using the `Full` failure mode and each `TExpected<>` is retrived from the captured `TExpectedFuture`s. A similar mechanism is recommended if `TExpectedFuture`s cannot be unified by a common result type, each `TExpectedFuture` should be `Convert`ed to `void` type and individual `TExpectedFuture`s captured and indiviually inspected. Should no tasks be given to `WhenAll` it will return a successful task.
+
+#### When Any
+
+The `TExpectedFuture` created by this call will be considered completed when the first of the given `TExpectedFuture`s is completed, the resulting expected will hold the value or error from that `TExpected`. 
+
+##### Implementation details
+
+It is important to note that `WhenAny` will always return an error should an empty array of futures be passed.
+
 ### Use case - Converting blocking code
 
 ``` cpp
