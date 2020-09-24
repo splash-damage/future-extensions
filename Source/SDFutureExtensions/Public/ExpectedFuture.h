@@ -272,12 +272,6 @@ namespace SD
 			return SharedState->InternalFuture.Get();
 		}
 
-		//@TODO
-		// 		TSharedFuture<ResultType> Share()
-		// 		{
-		// 			return TSharedFuture<ResultType>(MoveTemp(*this));
-		// 		}
-
 		bool IsValid() const
 		{
 			return PromiseCompletionEventRef.IsValid() && SharedState->InternalFuture.IsValid();
@@ -433,12 +427,6 @@ namespace SD
 		{
 			return SharedState->InternalFuture.Get();
 		}
-
-		//@TODO
-		// 		TSharedFuture<ResultType> Share()
-		// 		{
-		// 			return TSharedFuture<ResultType>(MoveTemp(*this));
-		// 		}
 
 		bool IsValid() const
 		{
