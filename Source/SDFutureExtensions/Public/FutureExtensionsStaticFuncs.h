@@ -33,11 +33,21 @@ namespace SD
 		const auto PromiseRef = MakeShared<SD::TExpectedPromise<TArray<T>>, ESPMode::ThreadSafe>();
 		const auto ValueRef = MakeShared<TArray<T>, ESPMode::ThreadSafe>();
 		const auto FirstErrorRef = MakeShared<SD::TExpectedPromise<TArray<T>>, ESPMode::ThreadSafe>();
+
+		const auto SetPromise = [FirstErrorRef, PromiseRef]()
+		{
+			FirstErrorRef->GetFuture().Then([PromiseRef](SD::TExpected<TArray<T>> Result) {PromiseRef->SetValue(MoveTemp(Result)); });
+		};
+
+		if (FailMode == EFailMode::Fast)
+		{
+			SetPromise();
+		}
+
 		for (const auto& Future : Futures)
 		{
-			Future.Then([CounterRef, PromiseRef, ValueRef, FirstErrorRef, FailMode] (const SD::TExpected<T>& Result)
+			Future.Then([CounterRef, ValueRef, FirstErrorRef, SetPromise] (const SD::TExpected<T>& Result)
 				{
-					--(CounterRef.Get());
 					if (Result.IsCompleted())
 					{
 						ValueRef->Emplace(*Result);
@@ -45,24 +55,12 @@ namespace SD
 					else
 					{
 						FirstErrorRef->SetValue(Convert<TArray<T>, T>(Result, TArray<T>()));
-					
-						if (FailMode == EFailMode::Fast)
-						{
-							PromiseRef->SetValue(FirstErrorRef->GetFuture().Get());
-						}
 					}
 			
-					if (CounterRef.Get() == 0)
+					if (--(CounterRef.Get()) == 0)
 					{
-						if (FirstErrorRef->IsSet() == false)
-						{
-							PromiseRef->SetValue(ValueRef.Get());
-							FirstErrorRef->SetValue(ValueRef.Get()); //Avoid broken promises
-						}
-						else
-						{
-							PromiseRef->SetValue(FirstErrorRef->GetFuture().Get());
-						}
+						FirstErrorRef->SetValue(ValueRef.Get());
+						SetPromise();
 					}
 				});
 		}
