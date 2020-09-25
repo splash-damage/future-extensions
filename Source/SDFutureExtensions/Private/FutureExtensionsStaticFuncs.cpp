@@ -26,7 +26,7 @@ SD::TExpectedFuture<void> SD::WhenAll(const TArray<SD::TExpectedFuture<void>>& F
 
 	for (const auto& Future : Futures)
 	{
-		Future.Then([CounterRef, FirstErrorRef, SetPromise](const SD::TExpected<void>& Result)
+		Future.Then([CounterRef, FirstErrorRef, SetPromise, FailMode](const SD::TExpected<void>& Result)
 			{
 				if (Result.IsCompleted() == false)
 				{
@@ -36,7 +36,11 @@ SD::TExpectedFuture<void> SD::WhenAll(const TArray<SD::TExpectedFuture<void>>& F
 				if (--(CounterRef.Get()) == 0)
 				{
 					FirstErrorRef->SetValue();
-					SetPromise();
+
+					if (FailMode != EFailMode::Fast)
+					{
+						SetPromise();
+					}
 				}
 			});
 	}
