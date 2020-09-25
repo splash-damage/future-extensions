@@ -46,7 +46,7 @@ namespace SD
 
 		for (const auto& Future : Futures)
 		{
-			Future.Then([CounterRef, ValueRef, FirstErrorRef, SetPromise] (const SD::TExpected<T>& Result)
+			Future.Then([CounterRef, ValueRef, FirstErrorRef, SetPromise, FailMode] (const SD::TExpected<T>& Result)
 				{
 					if (Result.IsCompleted())
 					{
@@ -60,7 +60,11 @@ namespace SD
 					if (--(CounterRef.Get()) == 0)
 					{
 						FirstErrorRef->SetValue(ValueRef.Get());
-						SetPromise();
+
+						if (FailMode != EFailMode::Fast)
+						{
+							SetPromise();
+						}
 					}
 				});
 		}
