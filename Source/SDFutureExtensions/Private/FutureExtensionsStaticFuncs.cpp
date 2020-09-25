@@ -13,36 +13,33 @@ SD::TExpectedFuture<void> SD::WhenAll(const TArray<SD::TExpectedFuture<void>>& F
 	const auto CounterRef = MakeShared<std::atomic<int32>, ESPMode::ThreadSafe>(Futures.Num());
 	const auto PromiseRef = MakeShared<SD::TExpectedPromise<void>, ESPMode::ThreadSafe>();
 	const auto FirstErrorRef = MakeShared<SD::TExpectedPromise<void>, ESPMode::ThreadSafe>();
-	for (auto& Future : Futures)
+
+	const auto SetPromise = [FirstErrorRef, PromiseRef]()
 	{
-		Future.Then([CounterRef, PromiseRef, FirstErrorRef, FailMode](const SD::TExpected<void>& Result)
+		FirstErrorRef->GetFuture().Then([PromiseRef](SD::TExpected<void> Result) {PromiseRef->SetValue(MoveTemp(Result)); });
+	};
+
+	if (FailMode == EFailMode::Fast)
+	{
+		SetPromise();
+	}
+
+	for (const auto& Future : Futures)
+	{
+		Future.Then([CounterRef, FirstErrorRef, SetPromise](const SD::TExpected<void>& Result)
 			{
-				--(CounterRef.Get());
 				if (Result.IsCompleted() == false)
 				{
-					FirstErrorRef->SetValue(Convert<void>(Result));
-
-					if (FailMode == EFailMode::Fast)
-					{
-						PromiseRef->SetValue(FirstErrorRef->GetFuture().Get());
-					}
+					FirstErrorRef->SetValue(SD::TExpected<void>(Result));
 				}
 
-				if (CounterRef.Get() == 0)
+				if (--(CounterRef.Get()) == 0)
 				{
-					if (FirstErrorRef->IsSet() == false)
-					{
-						PromiseRef->SetValue();
-						FirstErrorRef->SetValue(); //Avoid broken promises
-					}
-					else
-					{
-						PromiseRef->SetValue(FirstErrorRef->GetFuture().Get());
-					}
+					FirstErrorRef->SetValue();
+					SetPromise();
 				}
 			});
 	}
-
 	return PromiseRef->GetFuture();
 }
 
