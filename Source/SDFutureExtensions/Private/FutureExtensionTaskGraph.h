@@ -15,7 +15,7 @@ namespace SD
 		{
 			template<typename OldType, typename NewType>
 			void ConvertIncompleteExpectedToNewPromise(const TExpected<OldType>& From,
-														TExpectedPromise<NewType>& ToSet)
+				TExpectedPromise<NewType>& ToSet)
 			{
 				TExpected<NewType> ConvertedExpected = Convert<NewType, OldType>(From);
 				ToSet.SetValue(MoveTemp(ConvertedExpected));
@@ -23,7 +23,7 @@ namespace SD
 
 			template<typename OldType>
 			void ConvertIncompleteExpectedToNewPromise(const TExpected<OldType>& From,
-														TExpectedPromise<void>& ToSet)
+				TExpectedPromise<void>& ToSet)
 			{
 				TExpected<void> ConvertedExpected = Convert(From);
 				ToSet.SetValue(MoveTemp(ConvertedExpected));
@@ -36,14 +36,14 @@ namespace SD
 			*
 			*	Resolve the function to get the internal future, resolve it, and use the returned value to set the promise.
 			*/
-			template<typename Function, typename PromiseType, 
-						typename S = typename TInitialFunctorTypes<Function>::Specialization,
-						typename S::ReturnsExpectedFuture::Type* = nullptr>
-			void ExecuteInitialFunction(Function&& InitialFunction,
-										TExpectedPromise<PromiseType>& InitialPromise)
+			template<typename Function, typename PromiseType,
+				typename S = typename TInitialFunctorTypes<Function>::Specialization,
+				typename S::ReturnsExpectedFuture::Type* = nullptr>
+				void ExecuteInitialFunction(Function&& InitialFunction,
+					TExpectedPromise<PromiseType>& InitialPromise)
 			{
 				auto Future = InitialFunction();
-				
+
 				Future.Then([p = MoveTemp(InitialPromise)](TExpected<PromiseType> Expected) mutable {
 					p.SetValue(MoveTemp(Expected));
 				});
@@ -55,10 +55,10 @@ namespace SD
 			*		- Returns TExpected<PromiseType> or PromiseType
 			*/
 			template<typename Function, typename PromiseType,
-						typename S = typename TInitialFunctorTypes<Function>::Specialization,
-						typename S::ReturnsPlainValueOrExpected::Type* = nullptr>
-			void ExecuteInitialFunction(Function&& InitialFunction,
-										TExpectedPromise<PromiseType>& InitialPromise)
+				typename S = typename TInitialFunctorTypes<Function>::Specialization,
+				typename S::ReturnsPlainValueOrExpected::Type* = nullptr>
+				void ExecuteInitialFunction(Function&& InitialFunction,
+					TExpectedPromise<PromiseType>& InitialPromise)
 			{
 				InitialPromise.SetValue(InitialFunction());
 			}
@@ -69,10 +69,10 @@ namespace SD
 			*		- Returns void
 			*/
 			template<typename Function,
-						typename S = typename TInitialFunctorTypes<Function>::Specialization,
-						typename S::ReturnsVoid::Type* = nullptr>
+				typename S = typename TInitialFunctorTypes<Function>::Specialization,
+				typename S::ReturnsVoid::Type* = nullptr>
 				void ExecuteInitialFunction(Function&& InitialFunction,
-											TExpectedPromise<void>& InitialPromise)
+					TExpectedPromise<void>& InitialPromise)
 			{
 				InitialFunction();
 				InitialPromise.SetValue();
@@ -86,16 +86,16 @@ namespace SD
 			*	Always call the continuation, regardless of the state of PreviousFuture and 'unwrap' the returned future.
 			*/
 			template<typename Function, typename FutureType, typename PromiseType,
-						typename S = typename TContinuationFunctorTypes<Function, FutureType>::Specialization,
-						typename S::ReturnsExpectedFutureAndTakesExpected::Type* = nullptr>
-			void ExecuteContinuationFunction(Function&& ContinuationFunction, 
-												TExpectedFuture<FutureType>& PreviousFuture,
-												TExpectedPromise<PromiseType>& ContinuationPromise)
+				typename S = typename TContinuationFunctorTypes<Function, FutureType>::Specialization,
+				typename S::ReturnsExpectedFutureAndTakesExpected::Type* = nullptr>
+				void ExecuteContinuationFunction(Function&& ContinuationFunction,
+					TExpectedFuture<FutureType>& PreviousFuture,
+					TExpectedPromise<PromiseType>& ContinuationPromise)
 			{
 				check(PreviousFuture.IsReady());
 
 				ContinuationFunction(PreviousFuture.Get())
-				.Then([p = MoveTemp(ContinuationPromise)](TExpected<PromiseType> Expected) mutable {
+					.Then([p = MoveTemp(ContinuationPromise)](TExpected<PromiseType> Expected) mutable {
 					p.SetValue(MoveTemp(Expected));
 				});
 			}
@@ -108,18 +108,18 @@ namespace SD
 			*	Only call the continuation if PreviousFuture completed successfully, and 'unwrap' the returned future.
 			*/
 			template<typename Function, typename FutureType, typename PromiseType,
-						typename S = typename TContinuationFunctorTypes<Function, FutureType>::Specialization,
-						typename S::ReturnsExpectedFutureAndTakesValue::Type* = nullptr>
-			void ExecuteContinuationFunction(Function&& ContinuationFunction,
-												TExpectedFuture<FutureType>& PreviousFuture,
-												TExpectedPromise<PromiseType>& ContinuationPromise)
+				typename S = typename TContinuationFunctorTypes<Function, FutureType>::Specialization,
+				typename S::ReturnsExpectedFutureAndTakesValue::Type* = nullptr>
+				void ExecuteContinuationFunction(Function&& ContinuationFunction,
+					TExpectedFuture<FutureType>& PreviousFuture,
+					TExpectedPromise<PromiseType>& ContinuationPromise)
 			{
 				check(PreviousFuture.IsReady());
 				auto PrevExpected = PreviousFuture.Get();
 				if (PrevExpected.IsCompleted())
 				{
 					ContinuationFunction(*PrevExpected)
-					.Then([p = MoveTemp(ContinuationPromise)](TExpected<PromiseType> Expected) mutable {
+						.Then([p = MoveTemp(ContinuationPromise)](TExpected<PromiseType> Expected) mutable {
 						p.SetValue(MoveTemp(Expected));
 					});
 				}
@@ -137,18 +137,18 @@ namespace SD
 			*	Only call the continuation if PreviousFuture completed successfully, and 'unwrap' the returned future.
 			*/
 			template<typename Function, typename FutureType, typename PromiseType,
-						typename S = typename TContinuationFunctorTypes<Function, FutureType>::Specialization,
-						typename S::ReturnsExpectedFutureAndTakesVoid::Type* = nullptr>
-			void ExecuteContinuationFunction(Function&& ContinuationFunction,
-												TExpectedFuture<FutureType>& PreviousFuture,
-												TExpectedPromise<PromiseType>& ContinuationPromise)
+				typename S = typename TContinuationFunctorTypes<Function, FutureType>::Specialization,
+				typename S::ReturnsExpectedFutureAndTakesVoid::Type* = nullptr>
+				void ExecuteContinuationFunction(Function&& ContinuationFunction,
+					TExpectedFuture<FutureType>& PreviousFuture,
+					TExpectedPromise<PromiseType>& ContinuationPromise)
 			{
 				check(PreviousFuture.IsReady());
 				auto PrevExpected = PreviousFuture.Get();
 				if (PrevExpected.IsCompleted())
 				{
 					ContinuationFunction()
-					.Then([p = MoveTemp(ContinuationPromise)](TExpected<PromiseType> Expected) mutable {
+						.Then([p = MoveTemp(ContinuationPromise)](TExpected<PromiseType> Expected) mutable {
 						p.SetValue(MoveTemp(Expected));
 					});
 				}
@@ -166,11 +166,11 @@ namespace SD
 			*	Always call the continuation, regardless of the state of PreviousFuture.
 			*/
 			template<typename Function, typename FutureType, typename PromiseType,
-						typename S = typename TContinuationFunctorTypes<Function, FutureType>::Specialization,
-						typename S::ReturnsPlainValueOrExpectedAndTakesExpected::Type* = nullptr>
-			void ExecuteContinuationFunction(Function&& ContinuationFunction,
-												TExpectedFuture<FutureType>& PreviousFuture,
-												TExpectedPromise<PromiseType>& ContinuationPromise)
+				typename S = typename TContinuationFunctorTypes<Function, FutureType>::Specialization,
+				typename S::ReturnsPlainValueOrExpectedAndTakesExpected::Type* = nullptr>
+				void ExecuteContinuationFunction(Function&& ContinuationFunction,
+					TExpectedFuture<FutureType>& PreviousFuture,
+					TExpectedPromise<PromiseType>& ContinuationPromise)
 			{
 				check(PreviousFuture.IsReady());
 				ContinuationPromise.SetValue(ContinuationFunction(PreviousFuture.Get()));
@@ -184,11 +184,11 @@ namespace SD
 			*	Only call the continuation if PreviousFuture completed successfully.
 			*/
 			template<typename Function, typename FutureType, typename PromiseType,
-						typename S = typename TContinuationFunctorTypes<Function, FutureType>::Specialization,
-						typename S::ReturnsPlainValueOrExpectedAndTakesValue::Type* = nullptr>
-			void ExecuteContinuationFunction(Function&& ContinuationFunction,
-												TExpectedFuture<FutureType>& PreviousFuture,
-												TExpectedPromise<PromiseType>& ContinuationPromise)
+				typename S = typename TContinuationFunctorTypes<Function, FutureType>::Specialization,
+				typename S::ReturnsPlainValueOrExpectedAndTakesValue::Type* = nullptr>
+				void ExecuteContinuationFunction(Function&& ContinuationFunction,
+					TExpectedFuture<FutureType>& PreviousFuture,
+					TExpectedPromise<PromiseType>& ContinuationPromise)
 			{
 				check(PreviousFuture.IsReady());
 				auto PrevExpected = PreviousFuture.Get();
@@ -210,11 +210,11 @@ namespace SD
 			*	Only call the continuation if PreviousFuture completed successfully.
 			*/
 			template<typename Function, typename FutureType, typename PromiseType,
-						typename S = typename TContinuationFunctorTypes<Function, FutureType>::Specialization,
-						typename S::ReturnsPlainValueOrExpectedAndTakesVoid::Type* = nullptr>
-			void ExecuteContinuationFunction(Function&& ContinuationFunction,
-												TExpectedFuture<FutureType>& PreviousFuture,
-												TExpectedPromise<PromiseType>& ContinuationPromise)
+				typename S = typename TContinuationFunctorTypes<Function, FutureType>::Specialization,
+				typename S::ReturnsPlainValueOrExpectedAndTakesVoid::Type* = nullptr>
+				void ExecuteContinuationFunction(Function&& ContinuationFunction,
+					TExpectedFuture<FutureType>& PreviousFuture,
+					TExpectedPromise<PromiseType>& ContinuationPromise)
 			{
 				check(PreviousFuture.IsReady());
 				auto PrevExpected = PreviousFuture.Get();
@@ -236,11 +236,11 @@ namespace SD
 			*	Always call the continuation, regardless of the state of PreviousFuture.
 			*/
 			template<typename Function, typename FutureType, typename PromiseType,
-						typename S = typename TContinuationFunctorTypes<Function, FutureType>::Specialization,
-						typename S::ReturnsVoidAndTakesExpected::Type* = nullptr>
-			void ExecuteContinuationFunction(Function&& ContinuationFunction,
-												TExpectedFuture<FutureType>& PreviousFuture,
-												TExpectedPromise<PromiseType>& ContinuationPromise)
+				typename S = typename TContinuationFunctorTypes<Function, FutureType>::Specialization,
+				typename S::ReturnsVoidAndTakesExpected::Type* = nullptr>
+				void ExecuteContinuationFunction(Function&& ContinuationFunction,
+					TExpectedFuture<FutureType>& PreviousFuture,
+					TExpectedPromise<PromiseType>& ContinuationPromise)
 			{
 				check(PreviousFuture.IsReady());
 				ContinuationFunction(PreviousFuture.Get());
@@ -255,11 +255,11 @@ namespace SD
 			*	Only call the continuation if PreviousFuture completed successfully.
 			*/
 			template<typename Function, typename FutureType, typename PromiseType,
-						typename S = typename TContinuationFunctorTypes<Function, FutureType>::Specialization,
-						typename S::ReturnsVoidAndTakesValue::Type* = nullptr>
-			void ExecuteContinuationFunction(Function&& ContinuationFunction,
-												TExpectedFuture<FutureType>& PreviousFuture,
-												TExpectedPromise<PromiseType>& ContinuationPromise)
+				typename S = typename TContinuationFunctorTypes<Function, FutureType>::Specialization,
+				typename S::ReturnsVoidAndTakesValue::Type* = nullptr>
+				void ExecuteContinuationFunction(Function&& ContinuationFunction,
+					TExpectedFuture<FutureType>& PreviousFuture,
+					TExpectedPromise<PromiseType>& ContinuationPromise)
 			{
 				check(PreviousFuture.IsReady());
 				auto PrevExpected = PreviousFuture.Get();
@@ -282,11 +282,11 @@ namespace SD
 			*	Only call the continuation if PreviousFuture completed successfully.
 			*/
 			template<typename Function, typename FutureType, typename PromiseType,
-						typename S = typename TContinuationFunctorTypes<Function, FutureType>::Specialization,
-						typename S::ReturnsVoidAndTakesVoid::Type* = nullptr>
-			void ExecuteContinuationFunction(Function&& ContinuationFunction,
-												TExpectedFuture<FutureType>& PreviousFuture,
-												TExpectedPromise<PromiseType>& ContinuationPromise)
+				typename S = typename TContinuationFunctorTypes<Function, FutureType>::Specialization,
+				typename S::ReturnsVoidAndTakesVoid::Type* = nullptr>
+				void ExecuteContinuationFunction(Function&& ContinuationFunction,
+					TExpectedFuture<FutureType>& PreviousFuture,
+					TExpectedPromise<PromiseType>& ContinuationPromise)
 			{
 				check(PreviousFuture.IsReady());
 				auto PrevExpected = PreviousFuture.Get();
@@ -303,7 +303,7 @@ namespace SD
 		}
 
 		inline void TryAddPromiseToCancellationHandle(WeakSharedCancellationHandlePtr WeakHandle,
-														const SharedCancellablePromiseRef& Promise)
+			const SharedCancellablePromiseRef& Promise)
 		{
 			if (WeakHandle.IsValid())
 			{
@@ -320,7 +320,7 @@ namespace SD
 			using SharedPromiseRef = TSharedRef<TExpectedPromise<R>, ESPMode::ThreadSafe>;
 		public:
 			TExpectedFutureInitTask(F&& InFunc, const SharedPromiseRef& InPromise,
-									WeakSharedCancellationHandlePtr WeakCancellationHandle);
+				WeakSharedCancellationHandlePtr WeakCancellationHandle);
 
 			void DoTask(ENamedThreads::Type, const FGraphEventRef&);
 
@@ -340,8 +340,8 @@ namespace SD
 
 		public:
 			TExpectedFutureContinuationTask(F&& InFunction, const SharedPromiseRef& InPromise,
-											TExpectedFuture<P>&& InPrevFuture,
-											WeakSharedCancellationHandlePtr WeakCancellationHandle);
+				const TExpectedFuture<P>& InPrevFuture,
+				WeakSharedCancellationHandlePtr WeakCancellationHandle);
 
 			void DoTask(ENamedThreads::Type CurrentThread, const FGraphEventRef& MyCompletionGraphEvent);
 
@@ -357,8 +357,8 @@ namespace SD
 
 		template<typename F, typename R>
 		TExpectedFutureInitTask<F, R>::TExpectedFutureInitTask(F&& InFunc,
-																const TExpectedFutureInitTask<F, R>::SharedPromiseRef& InPromise,
-																WeakSharedCancellationHandlePtr WeakCancellationHandle)
+			const TExpectedFutureInitTask<F, R>::SharedPromiseRef& InPromise,
+			WeakSharedCancellationHandlePtr WeakCancellationHandle)
 			: SharedPromise(InPromise)
 			, InitFunctor(MoveTemp(InFunc))
 		{
@@ -382,11 +382,11 @@ namespace SD
 
 		template<typename F, typename P, typename R>
 		TExpectedFutureContinuationTask<F, P, R>::TExpectedFutureContinuationTask(F&& InFunction,
-													const TExpectedFutureContinuationTask<F, P, R>::SharedPromiseRef& InPromise,
-													TExpectedFuture<P>&& InPrevFuture,
-													WeakSharedCancellationHandlePtr WeakCancellationHandle)
+			const TExpectedFutureContinuationTask<F, P, R>::SharedPromiseRef& InPromise,
+			const TExpectedFuture<P>& InPrevFuture,
+			WeakSharedCancellationHandlePtr WeakCancellationHandle)
 			: SharedPromise(InPromise)
-			, PrevFuture(MoveTemp(InPrevFuture))
+			, PrevFuture(InPrevFuture)
 			, ContinuationFunction(MoveTemp(InFunction))
 		{
 			TryAddPromiseToCancellationHandle(WeakCancellationHandle, SharedPromise);
@@ -414,7 +414,7 @@ namespace SD
 
 		public:
 			TExpectedFutureQueuedWork(const SharedPromiseRef& InPromise,
-										WeakSharedCancellationHandlePtr WeakCancellationHandle);
+				WeakSharedCancellationHandlePtr WeakCancellationHandle);
 			virtual ~TExpectedFutureQueuedWork() {}
 
 		protected:
@@ -449,14 +449,14 @@ namespace SD
 
 		template<typename R>
 		TExpectedFutureQueuedWork<R>::TExpectedFutureQueuedWork(const SharedPromiseRef& InPromise,
-																WeakSharedCancellationHandlePtr WeakCancellationHandle)
+			WeakSharedCancellationHandlePtr WeakCancellationHandle)
 			: SharedPromise(InPromise)
 		{
 			//Task queued on a thread pool can be abandoned, which we conflate to cancellation.
 			//This requires them to always have a valid cancellation handle that we can use in this case.
 			//Create one if the promise doesn't already have one associated.
 			CancellationHandle = WeakCancellationHandle.IsValid() ? WeakCancellationHandle.Pin() :
-																	CreateCancellationHandle();
+				CreateCancellationHandle();
 			TryAddPromiseToCancellationHandle(CancellationHandle, SharedPromise);
 		}
 
@@ -481,7 +481,7 @@ namespace SD
 			using SharedPromiseRef = TSharedRef<TExpectedPromise<R>, ESPMode::ThreadSafe>;
 		public:
 			TExpectedFutureInitQueuedWork(F&& InFunc, const SharedPromiseRef& InPromise,
-										WeakSharedCancellationHandlePtr WeakCancellationHandle);
+				WeakSharedCancellationHandlePtr WeakCancellationHandle);
 
 			virtual ~TExpectedFutureInitQueuedWork() {}
 
@@ -496,8 +496,8 @@ namespace SD
 
 		template<typename F, typename R>
 		TExpectedFutureInitQueuedWork<F, R>::TExpectedFutureInitQueuedWork(F&& InFunc,
-																			const SharedPromiseRef& InPromise,
-																			WeakSharedCancellationHandlePtr WeakCancellationHandle)
+			const SharedPromiseRef& InPromise,
+			WeakSharedCancellationHandlePtr WeakCancellationHandle)
 			: TExpectedFutureQueuedWork<R>(InPromise, WeakCancellationHandle)
 			, InitFunctor(MoveTemp(InFunc))
 		{}
@@ -519,8 +519,8 @@ namespace SD
 
 		public:
 			TExpectedFutureContinuationQueuedWork(F&& InFunction, const SharedPromiseRef& InPromise,
-													TExpectedFuture<P>&& InPrevFuture,
-													WeakSharedCancellationHandlePtr WeakCancellationHandle);
+				const TExpectedFuture<P>& InPrevFuture,
+				WeakSharedCancellationHandlePtr WeakCancellationHandle);
 			virtual ~TExpectedFutureContinuationQueuedWork() {}
 
 			// Begin TExpectedFutureQueuedWork override
@@ -535,11 +535,11 @@ namespace SD
 
 		template<typename F, typename P, typename R>
 		TExpectedFutureContinuationQueuedWork<F, P, R>::TExpectedFutureContinuationQueuedWork(F&& InFunction,
-																								const SharedPromiseRef& InPromise,
-																								TExpectedFuture<P>&& InPrevFuture,
-																								WeakSharedCancellationHandlePtr WeakCancellationHandle)
+			const SharedPromiseRef& InPromise,
+			const TExpectedFuture<P>& InPrevFuture,
+			WeakSharedCancellationHandlePtr WeakCancellationHandle)
 			: TExpectedFutureQueuedWork<R>(InPromise, WeakCancellationHandle)
-			, PrevFuture(MoveTemp(InPrevFuture))
+			, PrevFuture(InPrevFuture)
 			, ContinuationFunction(MoveTemp(InFunction))
 		{}
 
