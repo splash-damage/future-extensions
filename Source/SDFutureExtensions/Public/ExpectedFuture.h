@@ -548,14 +548,38 @@ namespace SD
 	template <typename T, typename R, typename TEnableIf<!TIsSame<T, R>::Value>::Type* = nullptr>
 	TExpectedFuture<T> MakeReadyFutureFromExpected(const TExpected<R>& InExpected)
 	{
-		return MakeReadyFuture<T>(SD::Convert<T>(InExpected));
+		return MakeReadyFuture<T>(Convert<T>(InExpected));
 	}
 
-	template <class T>
+	template <typename T, typename R>
+	TExpectedFuture<T> MakeErrorFuture(const TExpected<R>& InExpected)
+	{
+		TExpectedPromise<T> ErrorPromise = TExpectedPromise<T>();
+		ErrorPromise.SetValue(ConvertIncomplete<T>(InExpected));
+		return ErrorPromise.GetFuture();
+	}
+
+	template <typename T>
+	TExpectedFuture<T> MakeErrorFuture(const TExpected<T>& InExpected)
+	{
+		TExpectedPromise<T> ErrorPromise = TExpectedPromise<T>();
+		ErrorPromise.SetValue(InExpected);
+		return ErrorPromise.GetFuture();
+	}
+
+	template <typename T>
+	TExpectedFuture<T> MakeErrorFuture(TExpected<T>&& InExpected)
+	{
+		TExpectedPromise<T> ErrorPromise = TExpectedPromise<T>();
+		ErrorPromise.SetValue(Forward<TExpected<T>>(InExpected));
+		return ErrorPromise.GetFuture();
+	}
+
+	template <typename T>
 	TExpectedFuture<T> MakeErrorFuture(const Error& InError)
 	{
 		TExpectedPromise<T> ErrorPromise = TExpectedPromise<T>();
-		ErrorPromise.SetValue(SD::MakeErrorExpected<T>(InError));
+		ErrorPromise.SetValue(MakeErrorExpected<T>(InError));
 		return ErrorPromise.GetFuture();
 	}
 }

@@ -352,4 +352,50 @@ namespace SD
 			return TExpected<void>();
 		}
 	}
+
+	template <typename R, typename P>
+	TExpected<R> ConvertIncomplete(const TExpected<P>& Other)
+	{
+		switch (Other.GetState())
+		{
+		case EExpectedResultState::Cancelled:
+			return MakeCancelledExpected<R>();
+		case EExpectedResultState::Error:
+			return MakeErrorExpected<R>(*Other.GetError());
+		case EExpectedResultState::Completed:
+			checkf(false, TEXT("This should only be called from incomplete TExpected"));
+		case EExpectedResultState::Incomplete:
+		default:
+			return TExpected<R>();
+		}
+	}
+
+	template <typename P>
+	TExpected<void> ConvertIncomplete(const TExpected<P>& Other)
+	{
+		switch (Other.GetState())
+		{
+		case EExpectedResultState::Cancelled:
+			return MakeCancelledExpected<void>();
+		case EExpectedResultState::Error:
+			return MakeErrorExpected<void>(*Other.GetError());
+		case EExpectedResultState::Completed:
+			checkf(false, TEXT("This should only be called from incomplete TExpected"));
+		case EExpectedResultState::Incomplete:
+		default:
+			return TExpected<void>();
+		}
+	}
+
+	template <typename R, typename O>
+	TExpected<R> MakeErrorExpected(const TExpected<O>& InExpected)
+	{
+		return ConvertIncomplete<R>(InExpected);
+	}
+
+	template <typename O>
+	TExpected<void> MakeErrorExpected(const TExpected<O>& InExpected)
+	{
+		return ConvertIncomplete<void>(InExpected);
+	}
 }
