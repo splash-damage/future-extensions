@@ -46,7 +46,7 @@ namespace SD
 
 		for (const auto& Future : Futures)
 		{
-			Future.Then([CounterRef, ValueRef, FirstErrorRef, SetPromise, FailMode] (const SD::TExpected<T>& Result)
+			Future.Then([CounterRef, ValueRef, FirstErrorRef, SetPromise, FailMode](const SD::TExpected<T>& Result)
 				{
 					if (Result.IsCompleted())
 					{
@@ -56,7 +56,7 @@ namespace SD
 					{
 						FirstErrorRef->SetValue(Convert<TArray<T>, T>(Result, TArray<T>()));
 					}
-			
+
 					if (--(CounterRef.Get()) == 0)
 					{
 						FirstErrorRef->SetValue(ValueRef.Get());

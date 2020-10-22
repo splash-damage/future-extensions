@@ -95,8 +95,8 @@ namespace SD
 		template< typename R>
 		class TExpectedFutureState
 		{
-		public: 
-			TExpectedFutureState(TFuture<TExpected<R>>&& Future, const FutureExecutionDetails::FExecutionDetails& Execution) 
+		public:
+			TExpectedFutureState(TFuture<TExpected<R>>&& Future, const FutureExecutionDetails::FExecutionDetails& Execution)
 				: InternalFuture(MoveTemp(Future))
 				, ExecutionDetails(Execution)
 			{}
@@ -225,12 +225,12 @@ namespace SD
 			, SharedState(FutureState::Allocate<ResultType>(MoveTemp(Future), InExecutionDetails))
 		{}
 
-		TExpectedFuture(const TExpectedFuture<ResultType> & Other)
+		TExpectedFuture(const TExpectedFuture<ResultType>& Other)
 			: TExpectedFutureBase(Other.PromiseCompletionEventRef)
 			, SharedState(Other.SharedState)
 		{}
 
-		TExpectedFuture<ResultType>& operator=(const TExpectedFuture<ResultType> & Other)
+		TExpectedFuture<ResultType>& operator=(const TExpectedFuture<ResultType>& Other)
 		{
 			PromiseCompletionEventRef = Other.PromiseCompletionEventRef;
 			SharedState = Other.SharedState;
@@ -289,7 +289,7 @@ namespace SD
 
 		TSharedRef<FutureState::TExpectedFutureState<ResultType>, ESPMode::ThreadSafe> SharedState;
 	};
-	
+
 	template <class R>
 	class TExpectedPromise : public FCancellablePromise
 	{
@@ -324,7 +324,7 @@ namespace SD
 		{
 			return FPlatformAtomics::AtomicRead(&ValueSetSync) == 1;
 		}
-		
+
 		void SetValue(ExpectedResultType&& Result)
 		{
 			if (FPlatformAtomics::InterlockedExchange(&ValueSetSync, 1) == 0)

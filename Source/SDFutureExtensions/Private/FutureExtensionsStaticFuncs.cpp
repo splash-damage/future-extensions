@@ -49,7 +49,7 @@ SD::TExpectedFuture<void> SD::WhenAll(const TArray<SD::TExpectedFuture<void>>& F
 
 SD::TExpectedFuture<void> SD::WhenAll(const TArray<TExpectedFuture<void>>& Futures)
 {
-	return WhenAll(Futures, EFailMode::Full); 
+	return WhenAll(Futures, EFailMode::Full);
 }
 
 SD::TExpectedFuture<void> SD::WaitAsync(const float DelayInSeconds)
