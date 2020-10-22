@@ -1,5 +1,3 @@
-#pragma once
-
 #include "FutureExtensions.h"
 #include <atomic>
 
