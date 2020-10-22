@@ -3,6 +3,7 @@
 
 #include "CancellationHandle.h"
 #include "Async/TaskGraphInterfaces.h"
+#include "FutureLogging.h"
 
 namespace SD
 {

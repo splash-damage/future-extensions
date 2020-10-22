@@ -1,7 +1,8 @@
 // Copyright(c) Splash Damage. All rights reserved.
 #include "FutureExtensionsModule.h"
+#include "FutureLogging.h"
 
-DECLARE_LOG_CATEGORY_EXTERN(LogFutureExtensions, Log, All);
+DEFINE_LOG_CATEGORY(LogFutureExtensions);
 
 class FFutureExtensions : public IFutureExtensions
 {
