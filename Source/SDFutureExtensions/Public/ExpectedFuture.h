@@ -237,8 +237,8 @@ namespace SD
 			return *this;
 		}
 
-		TExpectedFuture(FGraphEventRef())
-			: TExpectedFutureBase()
+		TExpectedFuture()
+			: TExpectedFutureBase(FGraphEventRef())
 			, SharedState(FutureState::Allocate<ResultType>(TFuture<ExpectedResultType>(), FutureExecutionDetails::FExecutionDetails()))
 		{}
 
