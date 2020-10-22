@@ -291,7 +291,7 @@ namespace SD
 	};
 	
 	template <class R>
-	class TExpectedPromise : public TSharedFromThis<TExpectedPromise<R>, ESPMode::ThreadSafe>, public FCancellablePromise
+	class TExpectedPromise : public FCancellablePromise
 	{
 		using ExpectedResultType = TExpected<R>;
 
@@ -445,7 +445,7 @@ namespace SD
 	};
 
 	template <>
-	class TExpectedPromise<void> : public TSharedFromThis<TExpectedPromise<void>, ESPMode::ThreadSafe>, public FCancellablePromise
+	class TExpectedPromise<void> : public FCancellablePromise
 	{
 	public:
 
