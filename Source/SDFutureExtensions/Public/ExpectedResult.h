@@ -288,9 +288,9 @@ namespace SD
 	}
 
 	template <typename R>
-	TExpected<R> MakeErrorExpected(const Error&& InError)
+	TExpected<R> MakeErrorExpected(Error&& InError)
 	{
-		return TExpected<R>(InError);
+		return TExpected<R>(Forward<Error>(InError));
 	}
 
 	template <typename R>
@@ -309,9 +309,9 @@ namespace SD
 		return TExpected<void>(InError);
 	}
 
-	inline TExpected<void> MakeErrorExpected(const Error&& InError)
+	inline TExpected<void> MakeErrorExpected(Error&& InError)
 	{
-		return TExpected<void>(InError);
+		return TExpected<void>(Forward<Error>(InError));
 	}
 
 	inline TExpected<void> MakeCancelledExpected()
@@ -320,7 +320,7 @@ namespace SD
 	}
 
 	template <typename R, typename P>
-	TExpected<R> Convert(const TExpected<P> Other, R&& ConvertValue = R())
+	TExpected<R> Convert(const TExpected<P>& Other, R&& ConvertValue = R())
 	{
 		switch (Other.GetState())
 		{
@@ -337,7 +337,7 @@ namespace SD
 	}
 
 	template <typename P>
-	TExpected<void> Convert(const TExpected<P> Other)
+	TExpected<void> Convert(const TExpected<P>& Other)
 	{
 		switch (Other.GetState())
 		{
