@@ -1,6 +1,8 @@
 #include "FutureExtensions.h"
 #include <atomic>
 
+#include "Containers/Ticker.h"
+
 SD::TExpectedFuture<void> SD::WhenAll(const TArray<SD::TExpectedFuture<void>>& Futures, const EFailMode FailMode)
 {
 	if (Futures.Num() == 0)
@@ -48,4 +50,20 @@ SD::TExpectedFuture<void> SD::WhenAll(const TArray<SD::TExpectedFuture<void>>& F
 SD::TExpectedFuture<void> SD::WhenAll(const TArray<TExpectedFuture<void>>& Futures)
 {
 	return WhenAll(Futures, EFailMode::Full); 
+}
+
+SD::TExpectedFuture<void> SD::WaitAsync(const float DelayInSeconds)
+{
+	const TSharedRef<TExpectedPromise<void>> Promise = MakeShared<TExpectedPromise<void>>();
+
+	FTicker::GetCoreTicker().AddTicker(
+		FTickerDelegate::CreateLambda([Promise](const float Delta)
+	{
+		Promise->SetValue();
+
+		// false = don't need to execute again
+		return false;
+	}), DelayInSeconds);
+
+	return Promise->GetFuture();
 }

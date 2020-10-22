@@ -94,4 +94,6 @@ namespace SD
 		}
 		return PromiseRef->GetFuture();
 	}
+
+	SDFUTUREEXTENSIONS_API TExpectedFuture<void> WaitAsync(const float DelayInSeconds);
 }
