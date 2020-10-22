@@ -17,7 +17,7 @@ namespace SD
 			void ConvertIncompleteExpectedToNewPromise(const TExpected<OldType>& From,
 				TExpectedPromise<NewType>& ToSet)
 			{
-				TExpected<NewType> ConvertedExpected = Convert<NewType, OldType>(From);
+				TExpected<NewType> ConvertedExpected = ConvertIncomplete<NewType, OldType>(From);
 				ToSet.SetValue(MoveTemp(ConvertedExpected));
 			}
 
@@ -25,7 +25,7 @@ namespace SD
 			void ConvertIncompleteExpectedToNewPromise(const TExpected<OldType>& From,
 				TExpectedPromise<void>& ToSet)
 			{
-				TExpected<void> ConvertedExpected = Convert(From);
+				TExpected<void> ConvertedExpected = ConvertIncomplete(From);
 				ToSet.SetValue(MoveTemp(ConvertedExpected));
 			}
 
