@@ -2,6 +2,10 @@
 #pragma once
 #include <atomic>
 
+#include "ExpectedResult.h"
+#include "ExpectedFuture.h"
+#include "SDFutureExtensions/Private/FutureExtensionTaskGraph.h"
+
 namespace SD
 {
 	namespace Errors

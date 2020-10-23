@@ -6,6 +6,8 @@
 #include "Templates/AreTypesEqual.h"
 #include "Async/TaskGraphInterfaces.h"
 #include "Misc/QueuedThreadPool.h"
+#include "ExpectedResult.h"
+#include "ExpectedFutureOptions.h"
 
 namespace SD
 {
