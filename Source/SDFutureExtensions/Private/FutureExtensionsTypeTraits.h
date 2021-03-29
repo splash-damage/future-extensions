@@ -2,6 +2,7 @@
 #pragma once
 
 #include "Templates/IntegralConstant.h"
+#include "Runtime/Launch/Resources/Version.h"
 
 namespace SD
 {
@@ -173,13 +174,25 @@ namespace SD
 		template<typename F, typename P>
 		struct TContinuationFunctorReturnType<F, P, typename TEnableIf<!TIsVoidType<P>::Value>::Type>
 		{
+#if ENGINE_MAJOR_VERSION >= 4 && ENGINE_MINOR_VERSION >= 26 && ENGINE_PATCH_VERSION >= 1
+			using ReturnType = typename TInvokeResult<typename std::decay_t<F>, P>::Type;
+#elif /* C++17 */ __cplusplus >= 201703L || /* MSVC */ (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L)
+			using ReturnType = std::invoke_result_t<typename std::decay_t<F>, P>;
+#else
 			using ReturnType = std::result_of_t<typename std::decay_t<F>(P)>;
+#endif
 		};
 
 		template<typename F, typename P>
 		struct TContinuationFunctorReturnType<F, P, typename TEnableIf<TIsVoidType<P>::Value>::Type>
 		{
+#if ENGINE_MAJOR_VERSION >= 4 && ENGINE_MINOR_VERSION >= 26 && ENGINE_PATCH_VERSION >= 1
+			using ReturnType = typename TInvokeResult<typename std::decay_t<F>>::Type;
+#elif /* C++17 */ __cplusplus >= 201703L || /* MSVC */ (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L)
+			using ReturnType = std::invoke_result_t<typename std::decay_t<F>>;
+#else
 			using ReturnType = std::result_of_t<typename std::decay_t<F>()>;
+#endif
 		};
 
 		//Aliases for supported specializations of continuation functors
