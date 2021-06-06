@@ -8,11 +8,6 @@
 
 namespace SD
 {
-	namespace Errors
-	{
-		constexpr int32 ERROR_INVALID_ARGUMENT = 1;
-	}
-
 	enum class EFailMode
 	{
 		Full,

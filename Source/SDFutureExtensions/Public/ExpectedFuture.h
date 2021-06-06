@@ -29,13 +29,13 @@ namespace SD
 		template<typename F, typename R>
 		class TExpectedFutureInitTask;
 
-		template<typename F, typename P, typename R>
+		template<typename F, typename P, typename R, typename TLifetimeMonitor>
 		class TExpectedFutureContinuationTask;
 
 		template<typename F, typename R>
 		class TExpectedFutureInitQueuedWork;
 
-		template<typename F, typename P, typename R>
+		template<typename F, typename P, typename R, typename TLifetimeMonitor>
 		class TExpectedFutureContinuationQueuedWork;
 	}
 	//
@@ -152,11 +152,66 @@ namespace SD
 
 	namespace FutureContinuationDetails
 	{
+		template<typename T, typename Enabled = void>
+		class TWeakRefType
+		{
+		public:
+			TWeakRefType(T*)
+			{
+				static_assert(std::is_void<Enabled>::value == false, "Lifetime management requires object with managed lifetime (ie. subclass of UObject, TSharedFromThis<T>)");
+			}
+			bool Pin() const;
+		};
+
+		template<typename T>
+		class TWeakRefType<T, typename std::enable_if<std::is_base_of<TSharedFromThis<T, ESPMode::ThreadSafe>, T>::value>::type> : TWeakPtr<T, ESPMode::ThreadSafe>
+		{
+		public:
+			explicit TWeakRefType(T* Obj) : TWeakPtr<T, ESPMode::ThreadSafe>(Obj ? Obj->AsShared() : TWeakPtr<T, ESPMode::ThreadSafe>()) {}
+			TSharedPtr<T, ESPMode::ThreadSafe> Pin() const { return TWeakPtr<T, ESPMode::ThreadSafe>::Pin(); }
+		};
+
+		template<typename T>
+		class TWeakRefType<T, typename std::enable_if<std::is_base_of<TSharedFromThis<T>, T>::value>::type> : TWeakPtr<T>
+		{
+		public:
+			explicit TWeakRefType(T* Obj) : TWeakPtr<T>(Obj ? Obj->AsShared() : TWeakPtr<T>()) {}
+			TSharedPtr<T> Pin() const { return TWeakPtr<T>::Pin(); }
+		};
+
+		template<typename T>
+		class TWeakRefType<T, typename std::enable_if<std::is_base_of<UObject, T>::value>::type> : TWeakObjectPtr<T>
+		{
+		public:
+			explicit TWeakRefType(T* Obj) : TWeakObjectPtr<T>(Obj) {}
+			T* Pin() const { return TWeakObjectPtr<T>::Get(); }
+		};
+
+		template<typename T>
+		class TLifetimeMonitor
+		{
+		public:
+			explicit TLifetimeMonitor(T* Obj) : WeakRef(Obj) {}
+			TLifetimeMonitor(const TLifetimeMonitor<T>& Other) : WeakRef(Other.WeakRef) {}
+
+			auto Pin() const { return WeakRef.Pin(); }
+
+		private:
+			TWeakRefType<T> WeakRef;
+		};
+
+		template<>
+		class TLifetimeMonitor<void>
+		{
+		public:
+			constexpr bool Pin() const { return true; }
+		};
+
 		using namespace FutureExtensionTypeTraits;
 
-		template<class F, class P>
+		template<class F, class P, typename LifetimeMonitorType>
 		auto ThenImpl(F&& Func, const TExpectedFuture<P>& PrevFuture, FGraphEventRef ContinuationTrigger,
-						const SD::FExpectedFutureOptions& FutureOptions)
+						const SD::FExpectedFutureOptions& FutureOptions, LifetimeMonitorType LifetimeMonitor)
 		{
 			check(PrevFuture.IsValid());
 
@@ -173,21 +228,23 @@ namespace SD
 
 			if (ExecutionDetails.ExecutionPolicy == EExpectedFutureExecutionPolicy::ThreadPool)
 			{
-				using ContinuationWorkType = FutureExtensionTaskGraph::TExpectedFutureContinuationQueuedWork<F, P, UnwrappedReturnType>;
+				using ContinuationWorkType = FutureExtensionTaskGraph::TExpectedFutureContinuationQueuedWork<F, P, UnwrappedReturnType, LifetimeMonitorType>;
 				GThreadPool->AddQueuedWork(new ContinuationWorkType(Forward<F>(Func),
 																	MoveTemp(Promise),
 																	PrevFuture,
-																	FutureOptions.GetCancellationTokenHandle()));
+																	FutureOptions.GetCancellationTokenHandle(),
+																	MoveTemp(LifetimeMonitor)));
 			}
 			else
 			{
-				using ContinuationTaskType = FutureExtensionTaskGraph::TExpectedFutureContinuationTask<F, P, UnwrappedReturnType>;
+				using ContinuationTaskType = FutureExtensionTaskGraph::TExpectedFutureContinuationTask<F, P, UnwrappedReturnType, LifetimeMonitorType>;
 				FGraphEventArray TriggerArray{ ContinuationTrigger };
 				TGraphTask<ContinuationTaskType>::CreateTask(&TriggerArray)
 					.ConstructAndDispatchWhenReady(Forward<F>(Func),
 													MoveTemp(Promise),
 													PrevFuture,
-													FutureOptions.GetCancellationTokenHandle());
+													FutureOptions.GetCancellationTokenHandle(),
+													MoveTemp(LifetimeMonitor));
 			}
 
 			return Future;
@@ -261,7 +318,15 @@ namespace SD
 		{
 			check(IsValid());
 			return FutureContinuationDetails::ThenImpl(Forward<F>(Func), *this,
-														PromiseCompletionEventRef, FutureOptions);
+														PromiseCompletionEventRef, FutureOptions, FutureContinuationDetails::TLifetimeMonitor<void>());
+		}
+
+		template<class F, typename TOwnerType>
+		auto Then(TOwnerType* Owner, F&& Func, const SD::FExpectedFutureOptions& FutureOptions = SD::FExpectedFutureOptions()) const
+		{
+			check(IsValid());
+			return FutureContinuationDetails::ThenImpl(Forward<F>(Func), *this,
+				PromiseCompletionEventRef, FutureOptions, FutureContinuationDetails::TLifetimeMonitor<TOwnerType>(Owner));
 		}
 
 		bool IsReady() const
@@ -430,7 +495,15 @@ namespace SD
 		{
 			check(IsValid());
 			return FutureContinuationDetails::ThenImpl(Forward<F>(Func), *this,
-														PromiseCompletionEventRef, FutureOptions);
+														PromiseCompletionEventRef, FutureOptions, FutureContinuationDetails::TLifetimeMonitor<void>());
+		}
+
+		template<class F, typename TOwnerType>
+		auto Then(TOwnerType* Owner, F&& Func, const SD::FExpectedFutureOptions& FutureOptions = SD::FExpectedFutureOptions()) const
+		{
+			check(IsValid());
+			return FutureContinuationDetails::ThenImpl(Forward<F>(Func), *this,
+														PromiseCompletionEventRef, FutureOptions, FutureContinuationDetails::TLifetimeMonitor<TOwnerType>(Owner));
 		}
 
 		ExpectedResultType Get() const
