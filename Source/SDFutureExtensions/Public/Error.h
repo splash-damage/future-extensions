@@ -5,6 +5,12 @@
 
 namespace SD
 {
+	namespace Errors
+	{
+		constexpr int32 ERROR_INVALID_ARGUMENT = 1;
+		constexpr int32 ERROR_OBJECT_DESTROYED = 2;
+	}
+
 	class Error
 	{
 	public:

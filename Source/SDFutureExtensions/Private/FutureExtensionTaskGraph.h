@@ -348,7 +348,7 @@ namespace SD
 		};
 
 
-		template<typename F, typename P, typename R>
+		template<typename F, typename P, typename R, typename TLifetimeMonitor>
 		class TExpectedFutureContinuationTask : public FAsyncGraphTaskBase
 		{
 			using SharedPromiseRef = TSharedRef<TExpectedPromise<R>, ESPMode::ThreadSafe>;
@@ -356,10 +356,12 @@ namespace SD
 		public:
 			TExpectedFutureContinuationTask(F&& InFunction, const SharedPromiseRef& InPromise,
 				const TExpectedFuture<P>& InPrevFuture,
-				WeakSharedCancellationHandlePtr WeakCancellationHandle)
+				WeakSharedCancellationHandlePtr WeakCancellationHandle,
+				TLifetimeMonitor&& InLifetimeMonitor)
 				: SharedPromise(InPromise)
 				, PrevFuture(InPrevFuture)
 				, ContinuationFunction(MoveTemp(InFunction))
+				, LifetimeMonitor(MoveTemp(InLifetimeMonitor))
 			{
 				TryAddPromiseToCancellationHandle(WeakCancellationHandle, SharedPromise);
 			}
@@ -368,7 +370,14 @@ namespace SD
 			{
 				if (!SharedPromise->IsSet())
 				{
-					Details::ExecuteContinuationFunction(MoveTemp(ContinuationFunction), PrevFuture, *SharedPromise);
+					if (auto PinnedObject = LifetimeMonitor.Pin())
+					{
+						Details::ExecuteContinuationFunction(MoveTemp(ContinuationFunction), PrevFuture, *SharedPromise);
+					}
+					else
+					{
+						SharedPromise->SetValue(SD::Error(Errors::ERROR_OBJECT_DESTROYED, TEXT("Lifetime Monitor Object could not be pinned")));
+					}
 				}
 			}
 
@@ -383,6 +392,8 @@ namespace SD
 			TExpectedFuture<P> PrevFuture;
 
 			F ContinuationFunction;
+
+			TLifetimeMonitor LifetimeMonitor;
 		};
 
 		template<typename R>
@@ -472,7 +483,7 @@ namespace SD
 			F InitFunctor;
 		};
 
-		template<typename F, typename P, typename R>
+		template<typename F, typename P, typename R, typename TLifetimeMonitor>
 		class TExpectedFutureContinuationQueuedWork : public TExpectedFutureQueuedWork<R>
 		{
 			using SharedPromiseRef = TSharedRef<TExpectedPromise<R>, ESPMode::ThreadSafe>;
@@ -480,10 +491,12 @@ namespace SD
 		public:
 			TExpectedFutureContinuationQueuedWork(F&& InFunction, const SharedPromiseRef& InPromise,
 				const TExpectedFuture<P>& InPrevFuture,
-				WeakSharedCancellationHandlePtr WeakCancellationHandle)
+				WeakSharedCancellationHandlePtr WeakCancellationHandle,
+				TLifetimeMonitor&& InLifetimeMonitor)
 				: TExpectedFutureQueuedWork<R>(InPromise, WeakCancellationHandle)
 				, PrevFuture(InPrevFuture)
 				, ContinuationFunction(MoveTemp(InFunction))
+				, LifetimeMonitor(MoveTemp(InLifetimeMonitor))
 			{
 			}
 
@@ -497,7 +510,15 @@ namespace SD
 				{
 					//We're running on a thread pool, so we can just wait on our previous future.
 					PrevFuture.Get();
-					Details::ExecuteContinuationFunction(MoveTemp(ContinuationFunction), PrevFuture, *Promise);
+
+					if (auto PinnedObject = LifetimeMonitor.Pin())
+					{
+						Details::ExecuteContinuationFunction(MoveTemp(ContinuationFunction), PrevFuture, *Promise);
+					}
+					else
+					{
+						Promise->SetValue(SD::Error(Errors::ERROR_OBJECT_DESTROYED, TEXT("Lifetime Monitor Object could not be pinned")));
+					}
 				}
 			}
 			// End TExpectedFutureQueuedWork override
@@ -506,6 +527,7 @@ namespace SD
 
 			TExpectedFuture<P> PrevFuture;
 			F ContinuationFunction;
+			TLifetimeMonitor LifetimeMonitor;
 		};
 	}
 }
