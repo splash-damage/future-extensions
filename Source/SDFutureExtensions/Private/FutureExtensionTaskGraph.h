@@ -2,6 +2,7 @@
 #pragma once
 
 #include "Async/Async.h"
+#include "CancellationHandle.h"
 
 //TODO: can be rewriten with C++17 `if constexpr`
 
@@ -320,11 +321,25 @@ namespace SD
 			using SharedPromiseRef = TSharedRef<TExpectedPromise<R>, ESPMode::ThreadSafe>;
 		public:
 			TExpectedFutureInitTask(F&& InFunc, const SharedPromiseRef& InPromise,
-				WeakSharedCancellationHandlePtr WeakCancellationHandle);
+				WeakSharedCancellationHandlePtr WeakCancellationHandle)
+				: SharedPromise(InPromise)
+				, InitFunctor(MoveTemp(InFunc))
+			{
+				TryAddPromiseToCancellationHandle(WeakCancellationHandle, SharedPromise);
+			}
 
-			void DoTask(ENamedThreads::Type, const FGraphEventRef&);
+			void DoTask(ENamedThreads::Type, const FGraphEventRef&)
+			{
+				if (!SharedPromise->IsSet())
+				{
+					Details::ExecuteInitialFunction(MoveTemp(InitFunctor), *SharedPromise);
+				}
+			}
 
-			ENamedThreads::Type GetDesiredThread();
+			ENamedThreads::Type GetDesiredThread()
+			{
+				return SharedPromise->GetExecutionDetails().ExecutionThread;
+			}
 
 		private:
 
@@ -341,11 +356,26 @@ namespace SD
 		public:
 			TExpectedFutureContinuationTask(F&& InFunction, const SharedPromiseRef& InPromise,
 				const TExpectedFuture<P>& InPrevFuture,
-				WeakSharedCancellationHandlePtr WeakCancellationHandle);
+				WeakSharedCancellationHandlePtr WeakCancellationHandle)
+				: SharedPromise(InPromise)
+				, PrevFuture(InPrevFuture)
+				, ContinuationFunction(MoveTemp(InFunction))
+			{
+				TryAddPromiseToCancellationHandle(WeakCancellationHandle, SharedPromise);
+			}
 
-			void DoTask(ENamedThreads::Type CurrentThread, const FGraphEventRef& MyCompletionGraphEvent);
+			void DoTask(ENamedThreads::Type CurrentThread, const FGraphEventRef& MyCompletionGraphEvent)
+			{
+				if (!SharedPromise->IsSet())
+				{
+					Details::ExecuteContinuationFunction(MoveTemp(ContinuationFunction), PrevFuture, *SharedPromise);
+				}
+			}
 
-			ENamedThreads::Type GetDesiredThread();
+			ENamedThreads::Type GetDesiredThread()
+			{
+				return SharedPromise->GetExecutionDetails().ExecutionThread;
+			}
 
 		private:
 
@@ -355,58 +385,6 @@ namespace SD
 			F ContinuationFunction;
 		};
 
-		template<typename F, typename R>
-		TExpectedFutureInitTask<F, R>::TExpectedFutureInitTask(F&& InFunc,
-			const TExpectedFutureInitTask<F, R>::SharedPromiseRef& InPromise,
-			WeakSharedCancellationHandlePtr WeakCancellationHandle)
-			: SharedPromise(InPromise)
-			, InitFunctor(MoveTemp(InFunc))
-		{
-			TryAddPromiseToCancellationHandle(WeakCancellationHandle, SharedPromise);
-		}
-
-		template<typename F, typename R>
-		void TExpectedFutureInitTask<F, R>::DoTask(ENamedThreads::Type, const FGraphEventRef&)
-		{
-			if (!SharedPromise->IsSet())
-			{
-				Details::ExecuteInitialFunction(MoveTemp(InitFunctor), *SharedPromise);
-			}
-		}
-
-		template<typename F, typename R>
-		ENamedThreads::Type TExpectedFutureInitTask<F, R>::GetDesiredThread()
-		{
-			return SharedPromise->GetExecutionDetails().ExecutionThread;
-		}
-
-		template<typename F, typename P, typename R>
-		TExpectedFutureContinuationTask<F, P, R>::TExpectedFutureContinuationTask(F&& InFunction,
-			const TExpectedFutureContinuationTask<F, P, R>::SharedPromiseRef& InPromise,
-			const TExpectedFuture<P>& InPrevFuture,
-			WeakSharedCancellationHandlePtr WeakCancellationHandle)
-			: SharedPromise(InPromise)
-			, PrevFuture(InPrevFuture)
-			, ContinuationFunction(MoveTemp(InFunction))
-		{
-			TryAddPromiseToCancellationHandle(WeakCancellationHandle, SharedPromise);
-		}
-
-		template<typename F, typename P, typename R>
-		void TExpectedFutureContinuationTask<F, P, R>::DoTask(ENamedThreads::Type, const FGraphEventRef&)
-		{
-			if (!SharedPromise->IsSet())
-			{
-				Details::ExecuteContinuationFunction(MoveTemp(ContinuationFunction), PrevFuture, *SharedPromise);
-			}
-		}
-
-		template<typename F, typename P, typename R>
-		ENamedThreads::Type TExpectedFutureContinuationTask<F, P, R>::GetDesiredThread()
-		{
-			return SharedPromise->GetExecutionDetails().ExecutionThread;
-		}
-
 		template<typename R>
 		class TExpectedFutureQueuedWork : public IQueuedWork
 		{
@@ -414,66 +392,55 @@ namespace SD
 
 		public:
 			TExpectedFutureQueuedWork(const SharedPromiseRef& InPromise,
-				WeakSharedCancellationHandlePtr WeakCancellationHandle);
+				WeakSharedCancellationHandlePtr WeakCancellationHandle)
+				: SharedPromise(InPromise)
+			{
+				//Task queued on a thread pool can be abandoned, which we conflate to cancellation.
+				//This requires them to always have a valid cancellation handle that we can use in this case.
+				//Create one if the promise doesn't already have one associated.
+				CancellationHandle = WeakCancellationHandle.IsValid()
+					? WeakCancellationHandle.Pin()
+					: CreateCancellationHandle();
+				TryAddPromiseToCancellationHandle(CancellationHandle, SharedPromise);
+			}
+
 			virtual ~TExpectedFutureQueuedWork() {}
 
 		protected:
 			virtual void DoWork() = 0;
-			SharedPromiseRef GetSharedPromise() const;
+
+			SharedPromiseRef GetSharedPromise() const
+			{
+				return SharedPromise;
+			}
 
 		private:
 			// Begin IQueuedWork override
-			virtual void DoThreadedWork() final;
-			virtual void Abandon() final;
+			virtual void DoThreadedWork() final
+			{
+				DoWork();
+				Finalize();
+			}
+
+			virtual void Abandon() final
+			{
+				//Treat abandonment as a cancellation
+				CancellationHandle->Cancel();
+				Finalize();
+			}
 			// End IQueuedWork override
 
-			void Finalize();
+			void Finalize()
+			{
+				//Queued work is allocated when being added to the pool, so we need to delete it when we're finished.
+				delete this;
+			}
 
 		private:
 			SharedPromiseRef SharedPromise;
 			SharedCancellationHandlePtr CancellationHandle;
 		};
 
-		template<typename R>
-		TSharedRef<TExpectedPromise<R>, ESPMode::ThreadSafe> TExpectedFutureQueuedWork<R>::GetSharedPromise() const
-		{
-			return SharedPromise;
-		}
-
-		template<typename R>
-		void TExpectedFutureQueuedWork<R>::DoThreadedWork()
-		{
-			DoWork();
-			Finalize();
-		}
-
-		template<typename R>
-		TExpectedFutureQueuedWork<R>::TExpectedFutureQueuedWork(const SharedPromiseRef& InPromise,
-			WeakSharedCancellationHandlePtr WeakCancellationHandle)
-			: SharedPromise(InPromise)
-		{
-			//Task queued on a thread pool can be abandoned, which we conflate to cancellation.
-			//This requires them to always have a valid cancellation handle that we can use in this case.
-			//Create one if the promise doesn't already have one associated.
-			CancellationHandle = WeakCancellationHandle.IsValid() ? WeakCancellationHandle.Pin() :
-				CreateCancellationHandle();
-			TryAddPromiseToCancellationHandle(CancellationHandle, SharedPromise);
-		}
-
-		template<typename R>
-		void TExpectedFutureQueuedWork<R>::Abandon()
-		{
-			//Treat abandonment as a cancellation
-			CancellationHandle->Cancel();
-			Finalize();
-		}
-
-		template<typename R>
-		void TExpectedFutureQueuedWork<R>::Finalize()
-		{
-			//Queued work is allocated when being added to the pool, so we need to delete it when we're finished.
-			delete this;
-		}
 
 		template<typename F, typename R>
 		class TExpectedFutureInitQueuedWork : public TExpectedFutureQueuedWork<R>
@@ -481,36 +448,29 @@ namespace SD
 			using SharedPromiseRef = TSharedRef<TExpectedPromise<R>, ESPMode::ThreadSafe>;
 		public:
 			TExpectedFutureInitQueuedWork(F&& InFunc, const SharedPromiseRef& InPromise,
-				WeakSharedCancellationHandlePtr WeakCancellationHandle);
+				WeakSharedCancellationHandlePtr WeakCancellationHandle)
+				: TExpectedFutureQueuedWork<R>(InPromise, WeakCancellationHandle)
+				, InitFunctor(MoveTemp(InFunc))
+			{
+			}
 
 			virtual ~TExpectedFutureInitQueuedWork() {}
 
 			// Begin TExpectedFutureQueuedWork override
-			virtual void DoWork() final;
+			virtual void DoWork() final
+			{
+				TExpectedFutureInitQueuedWork::SharedPromiseRef Promise = TExpectedFutureQueuedWork<R>::GetSharedPromise();
+				if (!Promise->IsSet())
+				{
+					Details::ExecuteInitialFunction(MoveTemp(InitFunctor), *Promise);
+				}
+			}
 			// End TExpectedFutureQueuedWork override
 
 		private:
 
 			F InitFunctor;
 		};
-
-		template<typename F, typename R>
-		TExpectedFutureInitQueuedWork<F, R>::TExpectedFutureInitQueuedWork(F&& InFunc,
-			const SharedPromiseRef& InPromise,
-			WeakSharedCancellationHandlePtr WeakCancellationHandle)
-			: TExpectedFutureQueuedWork<R>(InPromise, WeakCancellationHandle)
-			, InitFunctor(MoveTemp(InFunc))
-		{}
-
-		template<typename F, typename R>
-		void TExpectedFutureInitQueuedWork<F, R>::DoWork()
-		{
-			TExpectedFutureInitQueuedWork::SharedPromiseRef Promise = TExpectedFutureQueuedWork<R>::GetSharedPromise();
-			if (!Promise->IsSet())
-			{
-				Details::ExecuteInitialFunction(MoveTemp(InitFunctor), *Promise);
-			}
-		}
 
 		template<typename F, typename P, typename R>
 		class TExpectedFutureContinuationQueuedWork : public TExpectedFutureQueuedWork<R>
@@ -520,11 +480,26 @@ namespace SD
 		public:
 			TExpectedFutureContinuationQueuedWork(F&& InFunction, const SharedPromiseRef& InPromise,
 				const TExpectedFuture<P>& InPrevFuture,
-				WeakSharedCancellationHandlePtr WeakCancellationHandle);
+				WeakSharedCancellationHandlePtr WeakCancellationHandle)
+				: TExpectedFutureQueuedWork<R>(InPromise, WeakCancellationHandle)
+				, PrevFuture(InPrevFuture)
+				, ContinuationFunction(MoveTemp(InFunction))
+			{
+			}
+
 			virtual ~TExpectedFutureContinuationQueuedWork() {}
 
 			// Begin TExpectedFutureQueuedWork override
-			virtual void DoWork() final;
+			virtual void DoWork() final
+			{
+				TExpectedFutureContinuationQueuedWork::SharedPromiseRef Promise = TExpectedFutureQueuedWork<R>::GetSharedPromise();
+				if (!Promise->IsSet())
+				{
+					//We're running on a thread pool, so we can just wait on our previous future.
+					PrevFuture.Get();
+					Details::ExecuteContinuationFunction(MoveTemp(ContinuationFunction), PrevFuture, *Promise);
+				}
+			}
 			// End TExpectedFutureQueuedWork override
 
 		private:
@@ -532,27 +507,5 @@ namespace SD
 			TExpectedFuture<P> PrevFuture;
 			F ContinuationFunction;
 		};
-
-		template<typename F, typename P, typename R>
-		TExpectedFutureContinuationQueuedWork<F, P, R>::TExpectedFutureContinuationQueuedWork(F&& InFunction,
-			const SharedPromiseRef& InPromise,
-			const TExpectedFuture<P>& InPrevFuture,
-			WeakSharedCancellationHandlePtr WeakCancellationHandle)
-			: TExpectedFutureQueuedWork<R>(InPromise, WeakCancellationHandle)
-			, PrevFuture(InPrevFuture)
-			, ContinuationFunction(MoveTemp(InFunction))
-		{}
-
-		template<typename F, typename P, typename R>
-		void TExpectedFutureContinuationQueuedWork<F, P, R>::DoWork()
-		{
-			TExpectedFutureContinuationQueuedWork::SharedPromiseRef Promise = TExpectedFutureQueuedWork<R>::GetSharedPromise();
-			if (!Promise->IsSet())
-			{
-				//We're running on a thread pool, so we can just wait on our previous future.
-				PrevFuture.Get();
-				Details::ExecuteContinuationFunction(MoveTemp(ContinuationFunction), PrevFuture, *Promise);
-			}
-		}
 	}
 }
