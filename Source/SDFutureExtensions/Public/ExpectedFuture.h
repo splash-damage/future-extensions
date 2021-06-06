@@ -38,6 +38,10 @@ namespace SD
 		template<typename F, typename P, typename R, typename TLifetimeMonitor>
 		class TExpectedFutureContinuationQueuedWork;
 	}
+
+	template <typename T>
+	TExpectedFuture<T> MakeErrorFuture(Error&& InError);
+
 	//
 	namespace FutureExecutionDetails
 	{
@@ -301,6 +305,11 @@ namespace SD
 			, SharedState(FutureState::Allocate<ResultType>(TFuture<ExpectedResultType>(), FutureExecutionDetails::FExecutionDetails()))
 		{}
 
+		TExpectedFuture(Error&& Error)
+			: TExpectedFuture(MakeErrorFuture<R>(MoveTemp(Error)))
+		{
+		}
+
 		TExpectedFuture(TExpectedFuture<ResultType>&& Other)
 			: TExpectedFutureBase(MoveTemp(Other.PromiseCompletionEventRef))
 			, SharedState(MoveTemp(Other.SharedState))
@@ -472,6 +481,11 @@ namespace SD
 			: TExpectedFutureBase(FGraphEventRef())
 			, SharedState(FutureState::Allocate<ResultType>(TFuture<ExpectedResultType>(), FutureExecutionDetails::FExecutionDetails()))
 		{}
+
+		TExpectedFuture(Error&& Error)
+			: TExpectedFuture(MakeErrorFuture<void>(MoveTemp(Error)))
+		{
+		}
 
 		TExpectedFuture(TExpectedFuture<ResultType>&& Other)
 			: TExpectedFutureBase(MoveTemp(Other.PromiseCompletionEventRef))
@@ -663,6 +677,14 @@ namespace SD
 	{
 		TExpectedPromise<T> ErrorPromise = TExpectedPromise<T>();
 		ErrorPromise.SetValue(MakeErrorExpected<T>(InError));
+		return ErrorPromise.GetFuture();
+	}
+
+	template <typename T>
+	TExpectedFuture<T> MakeErrorFuture(Error&& InError)
+	{
+		TExpectedPromise<T> ErrorPromise = TExpectedPromise<T>();
+		ErrorPromise.SetValue(MakeErrorExpected<T>(MoveTemp(InError)));
 		return ErrorPromise.GetFuture();
 	}
 }
