@@ -327,6 +327,14 @@ namespace SD
 			return FPlatformAtomics::AtomicRead(&ValueSetSync) == 1;
 		}
 
+		void SetValue(const ExpectedResultType& Result)
+		{
+			if (FPlatformAtomics::InterlockedExchange(&ValueSetSync, 1) == 0)
+			{
+				InternalPromise.SetValue(Result);
+			}
+		}
+
 		void SetValue(ExpectedResultType&& Result)
 		{
 			if (FPlatformAtomics::InterlockedExchange(&ValueSetSync, 1) == 0)
