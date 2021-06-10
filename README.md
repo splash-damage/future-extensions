@@ -107,7 +107,7 @@ This functionality can be useful when composing multiple asynchronous calls in a
 
 #### Automatic Lifetime Management
 
-A common pattern with continuations is the need to capture an object safely to use within your code block. Often this capture will require use of a weak pointer, pinning of the object to ensure validity, and returning an error if the object is no longer valid.
+A common pattern with continuations is the need to capture an object safely to use within your code block. Often this capture will require use of a weak pointer, pinning of the object to ensure validity, and returning an error if the object is no longer valid. This is returned in the form of a result in the error state with the error code of `SD::Errors::ERROR_OBJECT_DESTROYED`.
 
 With automatic lifetime management, this process is handled for you, allowing for less boilerplate. The currently supported types are any `UObject` derived class, or any `TSharedFromThis<>` derived class, but this could be expanded to any type which can retrieve a weak pointer to itself.
 
