@@ -105,6 +105,26 @@ TestEqual("Continuation has been called", InternalError, TEST_ERROR_CODE);
 
 This functionality can be useful when composing multiple asynchronous calls in a chain, as you can provide a single 'catch-all' **expected-based continuation** after a chain of **value-based continuations** that only execute during normal behaviour.
 
+#### Automatic Lifetime Management
+
+A common pattern with continuations is the need to capture an object safely to use within your code block. Often this capture will require use of a weak pointer, pinning of the object to ensure validity, and returning an error if the object is no longer valid.
+
+With automatic lifetime management, this process is handled for you, allowing for less boilerplate. The currently supported types are any `UObject` derived class, or any `TSharedFromThis<>` derived class, but this could be expanded to any type which can retrieve a weak pointer to itself.
+
+```cpp
+SD::TExpectedFuture<int32> UWidget::GetValueAsync()
+{
+	return Super::GetValueAsync()
+		.Then(this, [this](const int32 BaseValue)
+	{
+		// 'this' is safe to capture and use raw
+		// as it will have been checked for validity
+		// before this labmda is executed
+		return BaseValue * this->Multiplier;
+	});
+}
+```
+
 ### Execution policies
 
 Execution policies indicate where in a multithreaded environment a continuation should execute and are specific to an individual continuation. continuations can also inherit the execution policy of their antecendent future.
