@@ -171,7 +171,15 @@ namespace SD
 		class TWeakRefType<T, typename std::enable_if<std::is_base_of<TSharedFromThis<T, ESPMode::ThreadSafe>, T>::value>::type> : TWeakPtr<T, ESPMode::ThreadSafe>
 		{
 		public:
-			explicit TWeakRefType(T* Obj) : TWeakPtr<T, ESPMode::ThreadSafe>(Obj ? Obj->AsShared() : TWeakPtr<T, ESPMode::ThreadSafe>()) {}
+			explicit TWeakRefType(T* Obj) : TWeakPtr<T, ESPMode::ThreadSafe>(GetWeakPtr(Obj)) {}
+			static TWeakPtr<T, ESPMode::ThreadSafe> GetWeakPtr(T* Obj)
+			{
+				if (Obj)
+				{
+					return Obj->AsShared();
+				}
+				return TWeakPtr<T, ESPMode::ThreadSafe>();
+			}
 			TSharedPtr<T, ESPMode::ThreadSafe> Pin() const { return TWeakPtr<T, ESPMode::ThreadSafe>::Pin(); }
 		};
 
@@ -179,7 +187,15 @@ namespace SD
 		class TWeakRefType<T, typename std::enable_if<std::is_base_of<TSharedFromThis<T>, T>::value>::type> : TWeakPtr<T>
 		{
 		public:
-			explicit TWeakRefType(T* Obj) : TWeakPtr<T>(Obj ? Obj->AsShared() : TWeakPtr<T>()) {}
+			explicit TWeakRefType(T* Obj) : TWeakPtr<T>(GetWeakPtr(Obj)) {}
+			static TWeakPtr<T> GetWeakPtr(T* Obj)
+			{
+				if (Obj)
+				{
+					return Obj->AsShared();
+				}
+				return TWeakPtr<T>();
+			}
 			TSharedPtr<T> Pin() const { return TWeakPtr<T>::Pin(); }
 		};
 
