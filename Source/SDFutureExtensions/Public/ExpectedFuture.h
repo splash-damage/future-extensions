@@ -232,19 +232,19 @@ namespace SD
 		};
 
 		template<typename T>
-		class TWeakRefType<T, typename std::enable_if<std::is_base_of<TSharedFromThis<T>, T>::value>::type> : TWeakPtr<T>
+		class TWeakRefType<T, typename std::enable_if<std::is_base_of<TSharedFromThis<T, ESPMode::NotThreadSafe>, T>::value>::type> : TWeakPtr<T, ESPMode::NotThreadSafe>
 		{
 		public:
-			explicit TWeakRefType(T* Obj) : TWeakPtr<T>(GetWeakPtr(Obj)) {}
-			static TWeakPtr<T> GetWeakPtr(T* Obj)
+			explicit TWeakRefType(T* Obj) : TWeakPtr<T, ESPMode::NotThreadSafe>(GetWeakPtr(Obj)) {}
+			static TWeakPtr<T, ESPMode::NotThreadSafe> GetWeakPtr(T* Obj)
 			{
 				if (Obj)
 				{
 					return Obj->AsShared();
 				}
-				return TWeakPtr<T>();
+				return TWeakPtr<T, ESPMode::NotThreadSafe>();
 			}
-			TSharedPtr<T> Pin() const { return TWeakPtr<T>::Pin(); }
+			TSharedPtr<T, ESPMode::NotThreadSafe> Pin() const { return TWeakPtr<T, ESPMode::NotThreadSafe>::Pin(); }
 		};
 
 		template<typename T>
