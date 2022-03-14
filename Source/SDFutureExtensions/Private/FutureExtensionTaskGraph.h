@@ -508,8 +508,8 @@ namespace SD
 				TExpectedFutureContinuationQueuedWork::SharedPromiseRef Promise = TExpectedFutureQueuedWork<R>::GetSharedPromise();
 				if (!Promise->IsSet())
 				{
-					//We're running on a thread pool, so we can just wait on our previous future.
-					PrevFuture.Get();
+					// We're running on a thread pool, so we can just wait on our previous future.
+					PrevFuture.Wait();
 
 					if (auto PinnedObject = LifetimeMonitor.Pin())
 					{
