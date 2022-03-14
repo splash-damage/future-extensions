@@ -116,7 +116,7 @@ void FFutureTestSpec_ExecutionPolicy::Define()
 		.Then([this, Done](SD::TExpected<ENamedThreads::Type> Expected)
 		{
 			TestTrue("Async function is completed", Expected.IsCompleted());
-			TestEqual("Execution thread", *Expected, ENamedThreads::AnyThread);
+			TestTrue("Executed on the thread pool", (*Expected & ENamedThreads::ThreadIndexMask) == ENamedThreads::AnyThread);
 			Done.Execute();
 		});
 	});
@@ -136,7 +136,7 @@ void FFutureTestSpec_ExecutionPolicy::Define()
 		.Then([this, Done](SD::TExpected<ENamedThreads::Type> Expected)
 		{
 			TestTrue("Async function is completed", Expected.IsCompleted());
-			TestEqual("Execution thread", *Expected, ENamedThreads::AnyThread);
+			TestTrue("Executed on the thread pool", (*Expected & ENamedThreads::ThreadIndexMask) == ENamedThreads::AnyThread);
 			Done.Execute();
 		});
 	});
