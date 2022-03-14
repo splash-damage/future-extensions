@@ -399,6 +399,14 @@ namespace SD
 			return PreviousPromise->GetExecutionDetails();
 		}
 
+		void Wait() const
+		{
+			if (PreviousPromise)
+			{
+				PreviousPromise->GetCompletionEvent()->Wait();
+			}
+		}
+
 	private:
 		TSharedPtr<TExpectedPromiseState<ResultType>, ESPMode::ThreadSafe> PreviousPromise;
 	};
@@ -538,6 +546,14 @@ namespace SD
 		{
 			check(IsValid());
 			return PreviousPromise->GetExecutionDetails();
+		}
+
+		void Wait() const
+		{
+			if (PreviousPromise)
+			{
+				PreviousPromise->GetCompletionEvent()->Wait();
+			}
 		}
 
 	private:
