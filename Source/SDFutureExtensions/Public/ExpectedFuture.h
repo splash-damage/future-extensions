@@ -423,6 +423,8 @@ namespace SD
 		{
 		}
 
+		TExpectedPromise(const TExpectedPromise& Other) = default;
+		TExpectedPromise& operator=(const TExpectedPromise& Other) = default;
 		TExpectedPromise(TExpectedPromise&& Other) = default;
 		TExpectedPromise& operator=(TExpectedPromise&& Other) = default;
 
@@ -573,6 +575,8 @@ namespace SD
 		{
 		}
 
+		TExpectedPromise(const TExpectedPromise& Other) = default;
+		TExpectedPromise& operator=(const TExpectedPromise& Other) = default;
 		TExpectedPromise(TExpectedPromise&& Other) = default;
 		TExpectedPromise& operator=(TExpectedPromise&& Other) = default;
 
