@@ -107,6 +107,17 @@ namespace SD
 		{
 		}
 
+		~TExpectedPromiseState()
+		{
+			// We must call Unlock to let the no-op task run and be cleaned up
+			// if we're shutting down, the system may no longer exist though
+			// so skip it in that case to prevent a crash
+			if (FTaskGraphInterface::IsRunning())
+			{
+				CompletionTask->Unlock();
+			}
+		}
+
 		void SetValue(const TExpected<ResultType>& Result)
 		{
 			if (FPlatformAtomics::InterlockedCompareExchange(&ValueSetSync, 1, 0) == 0)
@@ -156,7 +167,7 @@ namespace SD
 			CompletionTask->GetCompletionEvent()->DispatchSubsequents(EmptySubsequentsArray);
 		}
 
-		TGraphTask<FNullGraphTask>* CompletionTask;
+		TGraphTask<FNullGraphTask>* const CompletionTask;
 
 		// By design, cancellation and valid value setting is a race - cancellation is always *best attempt*.
 		// Trying to set a promise value that's already been set *should* just fail silently
