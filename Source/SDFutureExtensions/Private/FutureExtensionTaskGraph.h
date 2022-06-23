@@ -323,7 +323,7 @@ namespace SD
 			TExpectedFutureInitTask(F&& InFunc, const SharedPromiseRef& InPromise,
 				WeakSharedCancellationHandlePtr WeakCancellationHandle)
 				: SharedPromise(InPromise)
-				, InitFunctor(MoveTemp(InFunc))
+				, InitFunctor(Forward<F>(InFunc))
 			{
 				TryAddPromiseToCancellationHandle(WeakCancellationHandle, SharedPromise);
 			}
@@ -360,7 +360,7 @@ namespace SD
 				TLifetimeMonitor&& InLifetimeMonitor)
 				: SharedPromise(InPromise)
 				, PrevFuture(InPrevFuture)
-				, ContinuationFunction(MoveTemp(InFunction))
+				, ContinuationFunction(Forward<F>(InFunction))
 				, LifetimeMonitor(MoveTemp(InLifetimeMonitor))
 			{
 				TryAddPromiseToCancellationHandle(WeakCancellationHandle, SharedPromise);
@@ -461,7 +461,7 @@ namespace SD
 			TExpectedFutureInitQueuedWork(F&& InFunc, const SharedPromiseRef& InPromise,
 				WeakSharedCancellationHandlePtr WeakCancellationHandle)
 				: TExpectedFutureQueuedWork<R>(InPromise, WeakCancellationHandle)
-				, InitFunctor(MoveTemp(InFunc))
+				, InitFunctor(Forward<F>(InFunc))
 			{
 			}
 
@@ -495,7 +495,7 @@ namespace SD
 				TLifetimeMonitor&& InLifetimeMonitor)
 				: TExpectedFutureQueuedWork<R>(InPromise, WeakCancellationHandle)
 				, PrevFuture(InPrevFuture)
-				, ContinuationFunction(MoveTemp(InFunction))
+				, ContinuationFunction(Forward<F>(InFunction))
 				, LifetimeMonitor(MoveTemp(InLifetimeMonitor))
 			{
 			}
