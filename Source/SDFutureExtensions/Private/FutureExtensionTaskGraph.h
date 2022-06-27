@@ -319,6 +319,8 @@ namespace SD
 		class TExpectedFutureInitTask : public FAsyncGraphTaskBase
 		{
 			using SharedPromiseRef = TSharedRef<TExpectedPromise<R>, ESPMode::ThreadSafe>;
+			using FFunctorType = typename TRemoveCV<typename TRemoveReference<F>::Type>::Type;
+
 		public:
 			TExpectedFutureInitTask(F&& InFunc, const SharedPromiseRef& InPromise,
 				WeakSharedCancellationHandlePtr WeakCancellationHandle)
@@ -344,7 +346,7 @@ namespace SD
 		private:
 
 			SharedPromiseRef SharedPromise;
-			F InitFunctor;
+			FFunctorType InitFunctor;
 		};
 
 
@@ -352,6 +354,7 @@ namespace SD
 		class TExpectedFutureContinuationTask : public FAsyncGraphTaskBase
 		{
 			using SharedPromiseRef = TSharedRef<TExpectedPromise<R>, ESPMode::ThreadSafe>;
+			using FFunctorType = typename TRemoveCV<typename TRemoveReference<F>::Type>::Type;
 
 		public:
 			TExpectedFutureContinuationTask(F&& InFunction, const SharedPromiseRef& InPromise,
@@ -391,7 +394,7 @@ namespace SD
 			SharedPromiseRef SharedPromise;
 			TExpectedFuture<P> PrevFuture;
 
-			F ContinuationFunction;
+			FFunctorType ContinuationFunction;
 
 			TLifetimeMonitor LifetimeMonitor;
 		};
@@ -457,6 +460,8 @@ namespace SD
 		class TExpectedFutureInitQueuedWork : public TExpectedFutureQueuedWork<R>
 		{
 			using SharedPromiseRef = TSharedRef<TExpectedPromise<R>, ESPMode::ThreadSafe>;
+			using FFunctorType = typename TRemoveCV<typename TRemoveReference<F>::Type>::Type;
+
 		public:
 			TExpectedFutureInitQueuedWork(F&& InFunc, const SharedPromiseRef& InPromise,
 				WeakSharedCancellationHandlePtr WeakCancellationHandle)
@@ -480,13 +485,14 @@ namespace SD
 
 		private:
 
-			F InitFunctor;
+			FFunctorType InitFunctor;
 		};
 
 		template<typename F, typename P, typename R, typename TLifetimeMonitor>
 		class TExpectedFutureContinuationQueuedWork : public TExpectedFutureQueuedWork<R>
 		{
 			using SharedPromiseRef = TSharedRef<TExpectedPromise<R>, ESPMode::ThreadSafe>;
+			using FFunctorType = typename TRemoveCV<typename TRemoveReference<F>::Type>::Type;
 
 		public:
 			TExpectedFutureContinuationQueuedWork(F&& InFunction, const SharedPromiseRef& InPromise,
@@ -526,7 +532,7 @@ namespace SD
 		private:
 
 			TExpectedFuture<P> PrevFuture;
-			F ContinuationFunction;
+			FFunctorType ContinuationFunction;
 			TLifetimeMonitor LifetimeMonitor;
 		};
 	}
