@@ -200,13 +200,13 @@ namespace SD
 			if (ExecutionDetails.ExecutionPolicy == EExpectedFutureExecutionPolicy::ThreadPool)
 			{
 				using InitWorkType = FutureExtensionTaskGraph::TExpectedFutureInitQueuedWork<F, UnwrappedReturnType>;
-				GThreadPool->AddQueuedWork(new InitWorkType(MoveTemp(Function), Promise, FutureOptions.GetCancellationTokenHandle()));
+				GThreadPool->AddQueuedWork(new InitWorkType(Forward<F>(Function), Promise, FutureOptions.GetCancellationTokenHandle()));
 			}
 			else
 			{
 				using InitTaskType = FutureExtensionTaskGraph::TExpectedFutureInitTask<F, UnwrappedReturnType>;
 				TGraphTask<InitTaskType>::CreateTask()
-					.ConstructAndDispatchWhenReady(MoveTemp(Function), Promise, FutureOptions.GetCancellationTokenHandle());
+					.ConstructAndDispatchWhenReady(Forward<F>(Function), Promise, FutureOptions.GetCancellationTokenHandle());
 			}
 
 			return Future;
