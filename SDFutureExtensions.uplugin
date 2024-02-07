@@ -19,17 +19,12 @@
 			"Name": "SDFutureExtensions",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
-		},
-		{
-			"Name": "SDFutureExtensionsTest",
-			"Type": "DeveloperTool",
-			"LoadingPhase": "Default"
 		}
 	],
 	"Plugins": [
 		{
 			"Name": "Automatron",
-			"Enabled": true
+			"Enabled": false
 		}
 	]
 }

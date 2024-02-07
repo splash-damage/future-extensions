@@ -319,7 +319,7 @@ namespace SD
 		class TExpectedFutureInitTask : public FAsyncGraphTaskBase
 		{
 			using SharedPromiseRef = TSharedRef<TExpectedPromise<R>, ESPMode::ThreadSafe>;
-			using FFunctorType = typename TRemoveCV<typename TRemoveReference<F>::Type>::Type;
+			using FFunctorType = typename std::remove_cv_t<typename TRemoveReference<F>::Type>;
 
 		public:
 			TExpectedFutureInitTask(F&& InFunc, const SharedPromiseRef& InPromise,
@@ -354,7 +354,7 @@ namespace SD
 		class TExpectedFutureContinuationTask : public FAsyncGraphTaskBase
 		{
 			using SharedPromiseRef = TSharedRef<TExpectedPromise<R>, ESPMode::ThreadSafe>;
-			using FFunctorType = typename TRemoveCV<typename TRemoveReference<F>::Type>::Type;
+			using FFunctorType = typename std::remove_cv_t<typename TRemoveReference<F>::Type>;
 
 		public:
 			TExpectedFutureContinuationTask(F&& InFunction, const SharedPromiseRef& InPromise,
@@ -460,7 +460,7 @@ namespace SD
 		class TExpectedFutureInitQueuedWork : public TExpectedFutureQueuedWork<R>
 		{
 			using SharedPromiseRef = TSharedRef<TExpectedPromise<R>, ESPMode::ThreadSafe>;
-			using FFunctorType = typename TRemoveCV<typename TRemoveReference<F>::Type>::Type;
+			using FFunctorType = typename std::remove_cv_t<typename TRemoveReference<F>::Type>;
 
 		public:
 			TExpectedFutureInitQueuedWork(F&& InFunc, const SharedPromiseRef& InPromise,
@@ -492,7 +492,7 @@ namespace SD
 		class TExpectedFutureContinuationQueuedWork : public TExpectedFutureQueuedWork<R>
 		{
 			using SharedPromiseRef = TSharedRef<TExpectedPromise<R>, ESPMode::ThreadSafe>;
-			using FFunctorType = typename TRemoveCV<typename TRemoveReference<F>::Type>::Type;
+			using FFunctorType = typename std::remove_cv_t<typename TRemoveReference<F>::Type>;
 
 		public:
 			TExpectedFutureContinuationQueuedWork(F&& InFunction, const SharedPromiseRef& InPromise,
