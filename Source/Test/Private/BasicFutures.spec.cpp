@@ -76,7 +76,7 @@ void FFutureTestSpec_Basic::Define()
 		{
 			return 10;
 		})
-		.Then([](SD::TExpected<int32> Expected)
+		.Then([](SD::TExpected<int32> Expected) -> SD::TExpected<int32>
 		{
 			//Pass initial result straight through
 			return Expected;

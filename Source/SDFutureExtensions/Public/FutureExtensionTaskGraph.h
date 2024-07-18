@@ -3,6 +3,7 @@
 
 #include "Async/Async.h"
 #include "CancellationHandle.h"
+#include <type_traits>
 
 //TODO: can be rewriten with C++17 `if constexpr`
 
@@ -319,7 +320,7 @@ namespace SD
 		class TExpectedFutureInitTask : public FAsyncGraphTaskBase
 		{
 			using SharedPromiseRef = TSharedRef<TExpectedPromise<R>, ESPMode::ThreadSafe>;
-			using FFunctorType = typename TRemoveCV<typename TRemoveReference<F>::Type>::Type;
+			using FFunctorType = TRemoveCVRef<F>;
 
 		public:
 			TExpectedFutureInitTask(F&& InFunc, const SharedPromiseRef& InPromise,
@@ -354,7 +355,7 @@ namespace SD
 		class TExpectedFutureContinuationTask : public FAsyncGraphTaskBase
 		{
 			using SharedPromiseRef = TSharedRef<TExpectedPromise<R>, ESPMode::ThreadSafe>;
-			using FFunctorType = typename TRemoveCV<typename TRemoveReference<F>::Type>::Type;
+			using FFunctorType = TRemoveCVRef<F>;
 
 		public:
 			TExpectedFutureContinuationTask(F&& InFunction, const SharedPromiseRef& InPromise,
@@ -460,7 +461,7 @@ namespace SD
 		class TExpectedFutureInitQueuedWork : public TExpectedFutureQueuedWork<R>
 		{
 			using SharedPromiseRef = TSharedRef<TExpectedPromise<R>, ESPMode::ThreadSafe>;
-			using FFunctorType = typename TRemoveCV<typename TRemoveReference<F>::Type>::Type;
+			using FFunctorType = TRemoveCVRef<F>;
 
 		public:
 			TExpectedFutureInitQueuedWork(F&& InFunc, const SharedPromiseRef& InPromise,
@@ -492,7 +493,7 @@ namespace SD
 		class TExpectedFutureContinuationQueuedWork : public TExpectedFutureQueuedWork<R>
 		{
 			using SharedPromiseRef = TSharedRef<TExpectedPromise<R>, ESPMode::ThreadSafe>;
-			using FFunctorType = typename TRemoveCV<typename TRemoveReference<F>::Type>::Type;
+			using FFunctorType = TRemoveCVRef<F>;
 
 		public:
 			TExpectedFutureContinuationQueuedWork(F&& InFunction, const SharedPromiseRef& InPromise,
