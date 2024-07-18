@@ -150,7 +150,7 @@ void FFutureTestSpec_Cancellation::Define()
 		{
 			return Expected;
 		}, SD::FExpectedFutureOptions(CancellationHandle))
-		.Then([](SD::TExpected<int32> Expected)
+		.Then([](SD::TExpected<int32> Expected) -> SD::TExpected<bool>
 		{
 			//Then expected-based continuation is called with "Cancelled" status
 			return SD::MakeReadyExpected<bool>(Expected.IsCancelled());

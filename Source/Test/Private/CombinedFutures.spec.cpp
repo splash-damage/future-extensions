@@ -5,7 +5,6 @@
 
 #include "Helpers/TestHelpers.h"
 
-
 #if WITH_DEV_AUTOMATION_TESTS
 
 /************************************************************************/
@@ -14,7 +13,7 @@
 
 class FFutureTestSpec_Combined : public FFutureTestSpec
 {
-	GENERATE_SPEC(FFutureTestSpec_Basic, "FutureExtensions.Combined",
+	GENERATE_SPEC(FFutureTestSpec_Combined, "FutureExtensions.Combined",
 		EAutomationTestFlags::ProductFilter |
 		EAutomationTestFlags::EditorContext |
 		EAutomationTestFlags::ServerContext

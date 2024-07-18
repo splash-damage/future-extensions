@@ -91,7 +91,7 @@ void FFutureTestSpec_ExecutionPolicy::Define()
 			.SetExecutionPolicy(SD::EExpectedFutureExecutionPolicy::NamedThread)
 			.SetDesiredExecutionThread(ENamedThreads::GameThread)
 			.Build())
-		.Then([](SD::TExpected<void> Expected)
+		.Then([](SD::TExpected<void> Expected) -> SD::TExpected<ENamedThreads::Type>
 		{
 			return SD::MakeReadyExpected(FTaskGraphInterface::Get().GetCurrentThreadIfKnown());
 		}, SD::FExpectedFutureOptionsBuilder()
@@ -127,7 +127,7 @@ void FFutureTestSpec_ExecutionPolicy::Define()
 		{
 			return SD::MakeReadyExpected();
 		})
-		.Then([](SD::TExpected<void> Expected)
+		.Then([](SD::TExpected<void> Expected) -> SD::TExpected<ENamedThreads::Type>
 		{
 			return SD::MakeReadyExpected(FTaskGraphInterface::Get().GetCurrentThreadIfKnown());
 		}, SD::FExpectedFutureOptionsBuilder()
