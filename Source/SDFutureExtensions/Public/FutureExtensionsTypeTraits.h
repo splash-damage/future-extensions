@@ -17,6 +17,12 @@ namespace SD
 
 	namespace FutureExtensionTypeTraits
 	{
+		/**
+		 * Cannot use std::remove_cvref_t as this is not available in all SDKs 
+		 */
+		template <class T>
+		using TRemoveCVRef = std::remove_cv_t<std::remove_reference_t<T>>;
+
 		/*
 		*	Helper type traits for determining if types are either Expected or ExpectedFuture.
 		*	Required as certain functionality (such as implicit unwrapping of futures/types) requires
@@ -87,17 +93,17 @@ namespace SD
 
 			using IsPlainValueOrExpected = TIntegralConstant<bool,	!IsExpectedFuture::value &&
 																	(TIsExpected<ReturnType>::value ||
-																	!TIsVoidType<ReturnType>::Value)>;
+																	!std::is_void<ReturnType>::value)>;
 
 			using IsNonExpectedAndVoid = TIntegralConstant<bool, !TIsExpected<ReturnType>::value &&
-																TIsVoidType<ReturnType>::Value>;
+																std::is_void<ReturnType>::value>;
 		};
 
 		template<typename ParamType>
 		struct TParamTypeSpecializations
 		{
-			using IsVoidValueBased = TIsVoidType<ParamType>;
-			using IsNonVoidValueBased = TIntegralConstant<bool, !TIsVoidType<ParamType>::Value && 
+			using IsVoidValueBased = std::is_void<ParamType>;
+			using IsNonVoidValueBased = TIntegralConstant<bool, !std::is_void<ParamType>::value &&
 																!TIsExpected<ParamType>::value>;
 			using IsExpectedBased = TIsExpected<ParamType>;
 		};
@@ -172,7 +178,7 @@ namespace SD
 		struct TContinuationFunctorReturnType {};
 
 		template<typename F, typename P>
-		struct TContinuationFunctorReturnType<F, P, typename TEnableIf<!TIsVoidType<P>::Value>::Type>
+		struct TContinuationFunctorReturnType<F, P, typename TEnableIf<!std::is_void<P>::value>::Type>
 		{
 #if ENGINE_MAJOR_VERSION >= 4 && ENGINE_MINOR_VERSION >= 26 && ENGINE_PATCH_VERSION >= 1
 			using ReturnType = typename TInvokeResult<typename std::decay_t<F>, P>::Type;
@@ -184,7 +190,7 @@ namespace SD
 		};
 
 		template<typename F, typename P>
-		struct TContinuationFunctorReturnType<F, P, typename TEnableIf<TIsVoidType<P>::Value>::Type>
+		struct TContinuationFunctorReturnType<F, P, typename TEnableIf<std::is_void<P>::value>::Type>
 		{
 #if ENGINE_MAJOR_VERSION >= 4 && ENGINE_MINOR_VERSION >= 26 && ENGINE_PATCH_VERSION >= 1
 			using ReturnType = typename TInvokeResult<typename std::decay_t<F>>::Type;
@@ -205,7 +211,7 @@ namespace SD
 
 			using IsReturnsVoidAndTakesVoid =
 				TIntegralConstant<bool, ReturnSpec::IsNonExpectedAndVoid::Value &&
-										ParamSpec::IsVoidValueBased::Value>;
+										ParamSpec::IsVoidValueBased::value>;
 
 			using IsReturnsVoidAndTakesValue =
 				TIntegralConstant<bool, ReturnSpec::IsNonExpectedAndVoid::Value &&
@@ -217,7 +223,7 @@ namespace SD
 
 			using IsReturnsExpectedFutureAndTakesVoid =
 				TIntegralConstant<bool, ReturnSpec::IsExpectedFuture::value &&
-										ParamSpec::IsVoidValueBased::Value>;
+										ParamSpec::IsVoidValueBased::value>;
 
 			using IsReturnsExpectedFutureAndTakesValue =
 				TIntegralConstant<bool, ReturnSpec::IsExpectedFuture::value &&
@@ -229,7 +235,7 @@ namespace SD
 
 			using IsReturnsPlainValueOrExpectedAndTakesVoid =
 				TIntegralConstant<bool, ReturnSpec::IsPlainValueOrExpected::Value &&
-										ParamSpec::IsVoidValueBased::Value>;
+										ParamSpec::IsVoidValueBased::value>;
 
 			using IsReturnsPlainValueOrExpectedAndTakesValue =
 				TIntegralConstant<bool, ReturnSpec::IsPlainValueOrExpected::Value &&

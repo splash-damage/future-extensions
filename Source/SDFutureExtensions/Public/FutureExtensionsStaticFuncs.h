@@ -4,7 +4,7 @@
 
 #include "ExpectedResult.h"
 #include "ExpectedFuture.h"
-#include "SDFutureExtensions/Private/FutureExtensionTaskGraph.h"
+#include "FutureExtensionTaskGraph.h"
 
 namespace SD
 {

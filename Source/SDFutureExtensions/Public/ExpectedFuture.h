@@ -2,7 +2,7 @@
 #pragma once
 
 #include "Async/Future.h"
-#include "SDFutureExtensions/Private/FutureExtensionsTypeTraits.h"
+#include "FutureExtensionsTypeTraits.h"
 #include "Templates/AreTypesEqual.h"
 #include "Async/TaskGraphInterfaces.h"
 #include "Misc/QueuedThreadPool.h"
@@ -648,7 +648,7 @@ namespace SD
 		return ValuePromise.GetFuture();
 	}
 
-	template <typename T, typename R, typename TEnableIf<TIsSame<T, R>::Value>::Type* = nullptr>
+	template <typename T, typename R, typename TEnableIf<std::is_same_v<T, R>>::Type* = nullptr>
 	TExpectedFuture<T> MakeReadyFutureFromExpected(const TExpected<R>& InExpected)
 	{
 		TExpectedPromise<T> Promise = TExpectedPromise<T>();
@@ -656,7 +656,7 @@ namespace SD
 		return Promise.GetFuture();
 	}
 
-	template <typename T, typename R, typename TEnableIf<!TIsSame<T, R>::Value>::Type* = nullptr>
+	template <typename T, typename R, typename TEnableIf<!std::is_same_v<T, R>>::Type* = nullptr>
 	TExpectedFuture<T> MakeReadyFutureFromExpected(const TExpected<R>& InExpected)
 	{
 		return MakeReadyFuture<T>(Convert<T>(InExpected));

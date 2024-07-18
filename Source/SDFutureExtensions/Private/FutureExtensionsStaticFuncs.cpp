@@ -56,7 +56,7 @@ SD::TExpectedFuture<void> SD::WaitAsync(const float DelayInSeconds)
 {
 	const TSharedRef<TExpectedPromise<void>> Promise = MakeShared<TExpectedPromise<void>>();
 
-	FTicker::GetCoreTicker().AddTicker(
+	FTSTicker::GetCoreTicker().AddTicker(
 		FTickerDelegate::CreateLambda([Promise](const float Delta)
 	{
 		Promise->SetValue();
