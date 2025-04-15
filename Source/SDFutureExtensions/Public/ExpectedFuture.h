@@ -109,12 +109,11 @@ namespace SD
 
 		~TExpectedPromiseState()
 		{
-			// We must call Unlock to let the no-op task run and be cleaned up
-			// if we're shutting down, the system may no longer exist though
-			// so skip it in that case to prevent a crash
+			// If we're shutting down, the system may no longer exist
+			// so skip this in that case to prevent a crash
 			if (FTaskGraphInterface::IsRunning())
 			{
-				CompletionTask->Unlock();
+				SetValue(SD::MakeCancelledExpected<ResultType>());
 			}
 		}
 
