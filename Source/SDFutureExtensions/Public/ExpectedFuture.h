@@ -101,7 +101,8 @@ namespace SD
 	{
 	public:
 		TExpectedPromiseState(FutureExecutionDetails::FExecutionDetails InExecutionDetails)
-			: CompletionTask(TGraphTask<FNullGraphTask>::CreateTask().ConstructAndHold(TStatId(), ENamedThreads::AnyThread))
+			: CompletionEvent(TGraphTask<FNullGraphTask>::CreateTask()
+				.ConstructAndHold(TStatId(), ENamedThreads::AnyThread)->GetCompletionEvent())
 			, ValueSetSync(0)
 			, ExecutionDetails(MoveTemp(InExecutionDetails))
 		{
@@ -156,17 +157,16 @@ namespace SD
 
 		FGraphEventRef GetCompletionEvent() const
 		{
-			return CompletionTask->GetCompletionEvent();
+			return CompletionEvent;
 		}
 
 	private:
 		void Trigger()
 		{
-			TArray<FBaseGraphTask*> EmptySubsequentsArray;
-			CompletionTask->GetCompletionEvent()->DispatchSubsequents(EmptySubsequentsArray);
+			CompletionEvent->DispatchSubsequents();
 		}
 
-		TGraphTask<FNullGraphTask>* const CompletionTask;
+		FGraphEventRef CompletionEvent;
 
 		// By design, cancellation and valid value setting is a race - cancellation is always *best attempt*.
 		// Trying to set a promise value that's already been set *should* just fail silently
